@@ -5,7 +5,7 @@ import(
 	"sync"
 	"github.com/3d0c/gmf"
 	"fmt"
-	"io"
+	//"io"
 )
 
 const (
@@ -282,12 +282,79 @@ func (s *Streaming) startStreaming(suid string) error{
 
 		s.currentStreamingUID=suid;
 
+
+		
 		if err := s.outctx.WriteHeader(); err != nil {
 			return fmt.Errorf("error writing header - %s", err)
 		}
 
+		var pts  int64       = 0
+		for pkt := range s.mstreams[suid].inctx.GetNewPackets() {
 
-		var (
+			streamIdx := pkt.StreamIndex()
+			var frames []*gmf.Frame
+
+			if streamIdx == s.mstreams[suid].inastream.Index(){
+				frames, err = s.mstreams[suid].inaDecodecCtx.Decode(pkt)
+				if err != nil {
+					return fmt.Errorf("error decoding - %s", err)
+				}
+				
+				for _, frame := range frames {
+					frame.SetPts(pts)
+					pts++
+				}
+				packets, err := s.outaEncodeCtx.Encode(frames, -1)
+				for _, op := range packets {
+					gmf.RescaleTs(op, s.outaEncodeCtx.TimeBase(), s.outastream.TimeBase())
+					op.SetStreamIndex(s.outastream.Index())
+	
+					if err = s.outctx.WritePacket(op); err != nil {
+						break
+					}
+	
+					op.Free()
+				}
+	
+			}
+			if streamIdx == s.mstreams[suid].invstream.Index(){
+				frames, err = s.mstreams[suid].invDecodecCtx.Decode(pkt)
+				if err != nil {
+					return fmt.Errorf("error decoding - %s", err)
+				}
+				
+				for _, frame := range frames {
+					frame.SetPts(pts)
+					pts++
+				}
+
+				packets, err := s.outvEncodeCtx.Encode(frames, -1)
+				for _, op := range packets {
+					gmf.RescaleTs(op, s.outvEncodeCtx.TimeBase(), s.outvstream.TimeBase())
+					op.SetStreamIndex(s.outvstream.Index())
+	
+					if err = s.outctx.WritePacket(op); err != nil {
+						break
+					}
+	
+					op.Free()
+				}
+	
+			}
+
+			for _, frame := range frames {
+				if frame != nil {
+					frame.Free()
+				}
+			}
+
+			if pkt != nil {
+				pkt.Free()
+			}
+
+		}
+
+		/*var (
 			pkt   *gmf.Packet
 			i int
 			streamIdx int
@@ -295,7 +362,7 @@ func (s *Streaming) startStreaming(suid string) error{
 			flush     int = -1
 		)
 
-		for i=0;i< 1000;i++ {
+		for i=0;i< 10000;i++ {
 
 			if flush < 0 {
 				pkt, err = s.mstreams[suid].inctx.GetNextPacket()
@@ -381,7 +448,7 @@ func (s *Streaming) startStreaming(suid string) error{
 
 			
 
-		}
+		}*/
 
 		s.outctx.WriteTrailer()
 
@@ -417,11 +484,11 @@ var Streamer=&Streaming{mstreams:make(map[string]*Mstream)}
 func main(){
 	var m Mstream
 	var err error
-	err=Streamer.addStream("rtmp://mobliestream.c3tv.com:554/live/goodtv.sdp",m);
-	//err=Streamer.addStream("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4",m);
+	//err=Streamer.addStream("rtmp://58.200.131.2:1935/livetv/hunantv",m);
+	err=Streamer.addStream("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4",m);
 	if(err != nil){
 		fmt.Println("add stream failed")
 	}
-	err=Streamer.startStreaming("rtmp://mobliestream.c3tv.com:554/live/goodtv.sdp")
+	err=Streamer.startStreaming("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4")
 	fmt.Println(err)
 }
