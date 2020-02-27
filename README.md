@@ -1,2 +1,2 @@
 # organicio
-WIP, a tiny video streaming utility base on ffmpeg 
+WIP, a tiny video streaming utility base on [gmf](https://pages.github.com/)

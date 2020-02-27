@@ -186,14 +186,15 @@ func (s *Streaming) removeStream(suid string){
 	if s.streamExisted(suid){
 
 		/* execution order may matters */
+		s.mstreams[suid].invDecodecCtx.Close()
+		s.mstreams[suid].inaDecodecCtx.Close()
 		s.mstreams[suid].invDecodecCtx.Free()
 		s.mstreams[suid].inaDecodecCtx.Free()
 		s.mstreams[suid].invCodec.Free()
 		s.mstreams[suid].inaCodec.Free()
-		s.mstreams[suid].invstream.Free()
-		s.mstreams[suid].inastream.Free()
-		s.mstreams[suid].inctx.Free()
-
+		s.mstreams[suid].invstream.Free() 
+		s.mstreams[suid].inastream.Free() 
+		s.mstreams[suid].inctx.Free() // input context Close called in side Free method
 		delete(s.mstreams, suid)
 	}
 }
