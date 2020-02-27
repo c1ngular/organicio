@@ -12,7 +12,7 @@ const (
 	HW_VIDEO_CODEC_NAME_H264_MMAL="h264_mmal"
 	HW_VIDEO_CODEC_NAME_H264_OMX="h264_omx"
 	HW_VIDEO_CODEC_NAME_H264_V4L2M2M="h264_v4l2m2m"
-	VIDEO_CODEC_NAME_X264="libx264"
+	VIDEO_CODEC_NAME_X264="h264"
 
 	AUDIO_CODEC_NAME_AAC="aac"
 	AUDIO_CODEC_NAME_MP3="mp3"
@@ -37,12 +37,17 @@ var (
 	STREAMER_MP3_REPLACE_URL="/Users/s1ngular/GoWork/src/github.com/organicio/SakuraTears.mp3";
 )
 
-
-type Mstream struct{
+type StreamInfo struct{
 	Schema string `json:"schema"`
 	Vhost string `json:"vhost"`
 	AppName string `json:"app"`
 	StreamId string `json:"stream"`
+	UID string
+}
+
+type Mstream struct{
+
+	minfo StreamInfo
 	inctx  *gmf.FmtCtx
 	inastream *gmf.Stream
 	invstream *gmf.Stream
@@ -50,10 +55,6 @@ type Mstream struct{
 	invCodec *gmf.Codec
 	inaDecodecCtx *gmf.CodecCtx
 	invDecodecCtx *gmf.CodecCtx
-
-
-	pkt    *gmf.Packet
-	frames []*gmf.Frame
 }
 
 type Streaming struct{
@@ -74,91 +75,127 @@ type Streaming struct{
 
 
 
-func (s *Streaming) addStream(suid string , m Mstream) error{
-
-	if s.streamExisted(suid) {
-		if s.isStreaming() && s.currentStreamingUID == suid {
-			s.stopStreaming();
-		}
-		s.removeStream(suid);
-	}
+func (s *Streaming) addStream(mInfo StreamInfo) error{
 
 	var err error
 
-	m.inctx, err = gmf.NewInputCtx(suid)
+	m :=&Mstream{minfo:mInfo}
+
+	if s.streamExisted(m.minfo.UID) {
+		if s.isStreaming() && s.currentStreamingUID == m.minfo.UID {
+			s.stopStreaming();
+		}
+		s.removeStream(m.minfo.UID);
+	}
+
+	m.inctx, err = gmf.NewInputCtx(m.minfo.UID)
 	if err != nil {
 		m.inctx.Free()
-		log.Printf("Error creating context for '%s' - %s\n", suid,err)
-		return fmt.Errorf("Error creating context for '%s' - %s", suid,err)
+		log.Printf("Error creating context for '%s' - %s\n", m.minfo.UID,err)
+		return fmt.Errorf("Error creating context for '%s' - %s", m.minfo.UID,err)
 	}
 
-
-	/* video stream extract and decode context set up */
-	m.invstream, err = m.inctx.GetBestStream(gmf.AVMEDIA_TYPE_VIDEO)
+	err=s.setupInputVideoDecodeCtx(m,VIDEO_CODEC_NAME_X264)
 	if err != nil {
-		m.invstream.Free();
-		log.Printf("No video stream found in '%s'\n", suid)
-		return fmt.Errorf("No video stream found in '%s'", suid)
+		return fmt.Errorf("failed to setup input video decoder '%s'", m.minfo.UID)
 	}
 
-	m.invCodec ,err=gmf.FindDecoder(m.invstream.GetCodecPar().GetCodecId())
-	if(err != nil){
-		log.Printf("coud not fine video stream decoder for '%s'\n", suid)
-		return fmt.Errorf("coud not fine video stream decoder for '%s'", suid)		
-	}
-
-	if m.invDecodecCtx=gmf.NewCodecCtx(m.invCodec);m.invDecodecCtx == nil{
-		return fmt.Errorf("unable to create video codec context for %s",suid)
-	}
-
-	if err = m.invstream.GetCodecPar().ToContext(m.invDecodecCtx);err !=nil{
-		return fmt.Errorf("Failed to copy video decoder parameters to input decoder context  for %s",suid)
-	}
-
-
-	if err=m.invDecodecCtx.Open(nil);err != nil{
-		return fmt.Errorf("Failed to open decoder for video stream  for %s",suid)
-	}
-
-
-	/* audio stream extract and decode context set up */
-	m.inastream, err = m.inctx.GetBestStream(gmf.AVMEDIA_TYPE_AUDIO)
+	err=s.setupInputAudioDecodeCtx(m,AUDIO_CODEC_NAME_AAC)
 	if err != nil {
-		m.inastream.Free()
-		log.Printf("No audio stream found in '%s'\n", suid)
-		return fmt.Errorf("No audio stream found in '%s'", suid)
-	}	
+		return fmt.Errorf("failed to setup input audio decoder '%s'", m.minfo.UID)
+	}
+
 	
-	m.inaCodec ,err=gmf.FindDecoder(m.inastream.GetCodecPar().GetCodecId())
-	if(err != nil){
-		log.Printf("coud not fine audio stream decoder for '%s'\n", suid)
-		return fmt.Errorf("coud not fine video stream decoder for '%s'", suid)		
-	}	
+	//m.inctx.Dump()
 
-	if m.inaDecodecCtx=gmf.NewCodecCtx(m.inaCodec);m.inaDecodecCtx == nil{
-		return fmt.Errorf("unable to create audio codec context for %s",suid)
-	}
-
-	if err = m.inastream.GetCodecPar().ToContext(m.inaDecodecCtx);err !=nil{
-		return fmt.Errorf("Failed to copy audio decoder parameters to input decoder context  for %s",suid)
-	}
-
-	if err=m.inaDecodecCtx.Open(nil);err != nil{
-		return fmt.Errorf("Failed to open decoder for audio stream  for %s",suid)
-	}
-
-	m.inctx.Dump()
-
-	s.mstreams[suid]=&m
+	s.mstreams[m.minfo.UID]=m
 	return nil
 
 }
 
+func (s *Streaming) setupInputVideoDecodeCtx(m *Mstream, vdecoderName string) error{
+
+	var err error
+
+	m.invstream, err = m.inctx.GetBestStream(gmf.AVMEDIA_TYPE_VIDEO)
+	if err != nil {
+		m.invstream.Free()
+		log.Printf("No video stream found in '%s'\n", m.minfo.UID)
+		return fmt.Errorf("No video stream found in '%s'", m.minfo.UID)
+	}
+
+	/* video stream extract and decode context set up */
+
+	m.invCodec ,err=gmf.FindDecoder(vdecoderName)
+	if(err != nil){
+		log.Printf("coud not fine video stream decoder for '%s'\n", m.minfo.UID)
+		return fmt.Errorf("coud not fine video stream decoder for '%s'", m.minfo.UID)		
+	}
+
+	if m.invDecodecCtx=gmf.NewCodecCtx(m.invCodec);m.invDecodecCtx == nil{
+		return fmt.Errorf("unable to create video codec context for %s",m.minfo.UID)
+	}
+
+	if err = m.invstream.GetCodecPar().ToContext(m.invDecodecCtx);err !=nil{
+		return fmt.Errorf("Failed to copy video decoder parameters to input decoder context  for %s",m.minfo.UID)
+	}
+
+
+	if err=m.invDecodecCtx.Open(nil);err != nil{
+		return fmt.Errorf("Failed to open decoder for video stream  for %s",m.minfo.UID)
+	}
+
+	return nil
+}
+
+func (s *Streaming) setupInputAudioDecodeCtx(m *Mstream ,adecoderName string) error{
+
+	var err error
+
+	m.inastream, err = m.inctx.GetBestStream(gmf.AVMEDIA_TYPE_AUDIO)
+	if err != nil {
+		m.inastream.Free()
+		log.Printf("No audio stream found in '%s'\n", m.minfo.UID)
+		return fmt.Errorf("No audio stream found in '%s'", m.minfo.UID)
+	}	
+
+	/* audio stream extract and decode context set up */
+	m.inaCodec ,err=gmf.FindDecoder(adecoderName)
+	if(err != nil){
+		log.Printf("coud not fine audio stream decoder for '%s'\n", m.minfo.UID)
+		return fmt.Errorf("coud not fine video stream decoder for '%s'", m.minfo.UID)		
+	}	
+
+	if m.inaDecodecCtx=gmf.NewCodecCtx(m.inaCodec);m.inaDecodecCtx == nil{
+		return fmt.Errorf("unable to create audio codec context for %s",m.minfo.UID)
+	}
+
+	if err = m.inastream.GetCodecPar().ToContext(m.inaDecodecCtx);err !=nil{
+		return fmt.Errorf("Failed to copy audio decoder parameters to input decoder context  for %s",m.minfo.UID)
+	}
+
+	if err=m.inaDecodecCtx.Open(nil);err != nil{
+		return fmt.Errorf("Failed to open decoder for audio stream  for %s",m.minfo.UID)
+	}
+	return nil
+}
+
 
 func (s *Streaming) removeStream(suid string){
-	//free up resource , or cause memory leaks
 
-	delete(s.mstreams, suid)
+	if s.streamExisted(suid){
+
+		/* execution order may matters */
+		s.mstreams[suid].invDecodecCtx.Free()
+		s.mstreams[suid].inaDecodecCtx.Free()
+		s.mstreams[suid].invCodec.Free()
+		s.mstreams[suid].inaCodec.Free()
+		s.mstreams[suid].invstream.Free()
+		s.mstreams[suid].inastream.Free()
+		s.mstreams[suid].inctx.Free()
+
+		delete(s.mstreams, suid)
+	}
 }
 
 func (s *Streaming) streamExisted(suid string) bool{
@@ -482,13 +519,18 @@ func (s *Streaming) changeStreamingResolution(){
 
 var Streamer=&Streaming{mstreams:make(map[string]*Mstream)}
 func main(){
-	var m Mstream
+	Minfo:=StreamInfo{
+		Schema : "",
+		Vhost :"",
+		AppName :"live",
+		StreamId :"text",
+		UID: "/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4",
+	}
 	var err error
-	//err=Streamer.addStream("rtmp://58.200.131.2:1935/livetv/hunantv",m);
-	err=Streamer.addStream("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4",m);
+	err=Streamer.addStream(Minfo);
 	if(err != nil){
 		fmt.Println("add stream failed")
 	}
-	err=Streamer.startStreaming("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4")
+	//err=Streamer.startStreaming("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4")
 	fmt.Println(err)
 }
