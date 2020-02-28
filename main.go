@@ -185,7 +185,7 @@ func (s *Streamer) removeStream(suid string) {
 		s.mstreams[suid].inaCodec.Free()
 		s.mstreams[suid].invstream.Free()
 		s.mstreams[suid].inastream.Free()
-		s.mstreams[suid].inctx.Free() // input context Close called in side Free method
+		s.mstreams[suid].inctx.Free() // input context Close called inside Free method
 		delete(s.mstreams, suid)
 	}
 }
@@ -239,15 +239,11 @@ func (s *Streamer) setupOutputVideoEncodeCtxOptions(suid string) error {
 	s.outvOptions = []gmf.Option{
 		{Key: "time_base", Val: gmf.AVR{Num: 1, Den: STREAM_VIDEO_FRAMERATE}},
 		{Key: "pixel_format", Val: gmf.AV_PIX_FMT_YUV420P},
-		// Save original
 		{Key: "video_size", Val: s.mstreams[suid].invDecodecCtx.GetVideoSize()},
 		{Key: "b", Val: 500000},
 	}
 
-	//s.outvEncodeCtx.SetProfile(s.mstreams[suid].invDecodecCtx.GetProfile())
 	s.outvEncodeCtx.SetProfile(gmf.FF_PROFILE_H264_BASELINE)
-	//s.outvEncodeCtx.SetGopSize(10)
-	//s.outvEncodeCtx.SetMaxBFrames(1)
 	s.outvEncodeCtx.SetOptions(s.outvOptions)
 
 	if s.outctx.IsGlobalHeader() {
@@ -341,7 +337,7 @@ func (s *Streamer) setupOutputAudioStream() error {
 
 		return fmt.Errorf("Failed to copy audio encoder parameters to output stream - %s", err)
 	}
-
+	s.outastream.SetTimeBase(gmf.AVR{Num: 1, Den: STREAM_VIDEO_FRAMERATE})
 	return err
 }
 
@@ -395,8 +391,7 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 			pkt       *gmf.Packet
 			i         int
 			streamIdx int
-			pts       int64 = 0
-			flush     int   = -1
+			flush     int = -1
 		)
 
 		for i = 0; i < 10000; i++ {
@@ -430,13 +425,9 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 					return fmt.Errorf("error decoding - %s", err)
 				}
 
-				for _, frame := range frames {
-					frame.SetPts(pts)
-					pts++
-				}
 				packets, err := s.outaEncodeCtx.Encode(frames, flush)
 				for _, op := range packets {
-					gmf.RescaleTs(op, s.outaEncodeCtx.TimeBase(), s.outastream.TimeBase())
+					gmf.RescaleTs(op, s.mstreams[suid].inastream.TimeBase(), s.outastream.TimeBase())
 					op.SetStreamIndex(s.outastream.Index())
 
 					if err = s.outctx.WritePacket(op); err != nil {
@@ -447,22 +438,17 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 				}
 
 			}
+
 			if streamIdx == s.mstreams[suid].invstream.Index() {
 				frames, err = s.mstreams[suid].invDecodecCtx.Decode(pkt)
 				if err != nil {
 					return fmt.Errorf("error decoding - %s", err)
 				}
 
-				for _, frame := range frames {
-					frame.SetPts(pts)
-					pts++
-				}
-
 				packets, err := s.outvEncodeCtx.Encode(frames, flush)
 				for _, op := range packets {
-					gmf.RescaleTs(op, s.outvEncodeCtx.TimeBase(), s.outvstream.TimeBase())
+					gmf.RescaleTs(op, s.mstreams[suid].invstream.TimeBase(), s.outvstream.TimeBase())
 					op.SetStreamIndex(s.outvstream.Index())
-
 					if err = s.outctx.WritePacket(op); err != nil {
 						break
 					}
