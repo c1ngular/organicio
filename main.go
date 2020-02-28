@@ -13,11 +13,11 @@ const (
 	HW_VIDEO_CODEC_NAME_H264_MMAL    = "h264_mmal"
 	HW_VIDEO_CODEC_NAME_H264_OMX     = "h264_omx"
 	HW_VIDEO_CODEC_NAME_H264_V4L2M2M = "h264_v4l2m2m"
-	VIDEO_CODEC_NAME_X264            = "h264"
+	VIDEO_CODEC_ENCODER_NAME_X264    = "libx264"
+	VIDEO_CODEC_DECODER_NAME_X264    = "h264"
 
-	AUDIO_CODEC_NAME_AAC        = "aac"
-	AUDIO_CODEC_NAME_MP3        = "mp3"
-	AUDIO_CODEC_OUTPUT_CHANNELS = 2
+	AUDIO_CODEC_NAME_AAC = "aac"
+	AUDIO_CODEC_NAME_MP3 = "mp3"
 )
 
 var (
@@ -87,7 +87,7 @@ func (s *Streamer) addStream(mInfo StreamInfo) error {
 			return fmt.Errorf("Error creating context for '%s' - %s", m.minfo.UID, err)
 		}
 
-		err = s.setupInputVideoDecodeCtx(m, VIDEO_CODEC_NAME_X264)
+		err = s.setupInputVideoDecodeCtx(m, VIDEO_CODEC_DECODER_NAME_X264)
 		if err != nil {
 			return fmt.Errorf("failed to setup input video decoder '%s'", m.minfo.UID)
 		}
@@ -220,7 +220,7 @@ func (s *Streamer) setupOutputVideoEncodeCtx(vencoderName string) error {
 
 	var err error
 
-	s.outvCodec, err = gmf.FindEncoder(gmf.AV_CODEC_ID_H264)
+	s.outvCodec, err = gmf.FindEncoder(vencoderName)
 	if err != nil {
 		return fmt.Errorf("output video encoder not found: '%s'", err)
 	}
@@ -352,7 +352,7 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 		if err != nil {
 			return err
 		}
-		err = s.setupOutputVideoEncodeCtx(VIDEO_CODEC_NAME_X264)
+		err = s.setupOutputVideoEncodeCtx(VIDEO_CODEC_ENCODER_NAME_X264)
 		if err != nil {
 			return err
 		}
@@ -520,12 +520,12 @@ func main() {
 		Vhost:    "",
 		AppName:  "live",
 		StreamId: "text",
-		UID:      "rtmp://58.200.131.2:1935/livetv/hunantv",
+		UID:      "/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4",
 	}
 	var err error
 	err = Streamer.addStream(Minfo)
 	if err != nil {
-		fmt.Println("rtmp://58.200.131.2:1935/livetv/hunantv")
+		fmt.Println("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4")
 	}
 
 	err = Streamer.startStreaming(Minfo)
