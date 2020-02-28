@@ -15,8 +15,9 @@ const (
 	HW_VIDEO_CODEC_NAME_H264_V4L2M2M = "h264_v4l2m2m"
 	VIDEO_CODEC_NAME_X264            = "h264"
 
-	AUDIO_CODEC_NAME_AAC = "aac"
-	AUDIO_CODEC_NAME_MP3 = "mp3"
+	AUDIO_CODEC_NAME_AAC        = "aac"
+	AUDIO_CODEC_NAME_MP3        = "mp3"
+	AUDIO_CODEC_OUTPUT_CHANNELS = 2
 )
 
 var (
@@ -519,12 +520,12 @@ func main() {
 		Vhost:    "",
 		AppName:  "live",
 		StreamId: "text",
-		UID:      "/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4",
+		UID:      "rtmp://58.200.131.2:1935/livetv/hunantv",
 	}
 	var err error
 	err = Streamer.addStream(Minfo)
 	if err != nil {
-		fmt.Println("add stream failed")
+		fmt.Println("rtmp://58.200.131.2:1935/livetv/hunantv")
 	}
 
 	err = Streamer.startStreaming(Minfo)
