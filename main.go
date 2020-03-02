@@ -302,10 +302,10 @@ func (s *Streamer) setupOutputAudioEncodeCtxOptions(suid string) error {
 	var err error
 
 	s.outaOptions = []gmf.Option{
-		{Key: "time_base", Val: s.mstreams[suid].inaDecodecCtx.TimeBase().AVR()},
+		{Key: "time_base", Val: gmf.AVR{Num: 1, Den: STREAM_VIDEO_FRAMERATE}},
 		{Key: "ar", Val: s.mstreams[suid].inaDecodecCtx.SampleRate()},
 		{Key: "ac", Val: s.mstreams[suid].inaDecodecCtx.Channels()},
-		{Key: "channel_layout", Val: s.outaEncodeCtx.SelectChannelLayout()},
+		{Key: "channel_layout", Val: s.mstreams[suid].inaDecodecCtx.GetDefaultChannelLayout(s.mstreams[suid].inaDecodecCtx.Channels())},
 	}
 	s.outaEncodeCtx.SetSampleFmt(s.mstreams[suid].inaDecodecCtx.SampleFmt())
 	s.outaEncodeCtx.SelectSampleRate()
@@ -397,6 +397,7 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 
 		for i = 0; i < 10000; i++ {
 
+			//fmt.Print(i)
 			if flush < 0 {
 				pkt, err = s.mstreams[suid].inctx.GetNextPacket()
 				if err != nil && err != io.EOF {
@@ -520,12 +521,12 @@ func main() {
 		Vhost:    "",
 		AppName:  "live",
 		StreamId: "text",
-		UID:      "/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4",
+		UID:      "rtmp://202.69.69.180:443/webcast/bshdlive-pc",
 	}
 	var err error
 	err = Streamer.addStream(Minfo)
 	if err != nil {
-		fmt.Println("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4")
+		fmt.Println("rtmp://202.69.69.180:443/webcast/bshdlive-pc")
 	}
 
 	err = Streamer.startStreaming(Minfo)
