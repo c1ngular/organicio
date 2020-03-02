@@ -239,11 +239,11 @@ func (s *Streamer) setupOutputVideoEncodeCtxOptions(suid string) error {
 
 	s.outvOptions = []gmf.Option{
 		{Key: "time_base", Val: gmf.AVR{Num: 1, Den: STREAM_VIDEO_FRAMERATE}},
-		{Key: "pixel_format", Val: gmf.AV_PIX_FMT_YUV420P},
+		//{Key: "pixel_format", Val: gmf.AV_PIX_FMT_YUV420P},
 		{Key: "video_size", Val: s.mstreams[suid].invDecodecCtx.GetVideoSize()},
 		{Key: "b", Val: 500000},
 	}
-
+	s.outvEncodeCtx.SetPixFmt(s.mstreams[suid].invDecodecCtx.PixFmt())
 	s.outvEncodeCtx.SetProfile(gmf.FF_PROFILE_H264_BASELINE)
 	s.outvEncodeCtx.SetOptions(s.outvOptions)
 
@@ -397,7 +397,6 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 
 		for i = 0; i < 10000; i++ {
 
-			//fmt.Print(i)
 			if flush < 0 {
 				pkt, err = s.mstreams[suid].inctx.GetNextPacket()
 				if err != nil && err != io.EOF {
@@ -429,9 +428,9 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 
 				packets, err := s.outaEncodeCtx.Encode(frames, flush)
 				for _, op := range packets {
+
 					gmf.RescaleTs(op, s.mstreams[suid].inastream.TimeBase(), s.outastream.TimeBase())
 					op.SetStreamIndex(s.outastream.Index())
-
 					if err = s.outctx.WritePacket(op); err != nil {
 						break
 					}
@@ -449,6 +448,7 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 
 				packets, err := s.outvEncodeCtx.Encode(frames, flush)
 				for _, op := range packets {
+
 					gmf.RescaleTs(op, s.mstreams[suid].invstream.TimeBase(), s.outvstream.TimeBase())
 					op.SetStreamIndex(s.outvstream.Index())
 					if err = s.outctx.WritePacket(op); err != nil {
@@ -521,12 +521,12 @@ func main() {
 		Vhost:    "",
 		AppName:  "live",
 		StreamId: "text",
-		UID:      "rtmp://202.69.69.180:443/webcast/bshdlive-pc",
+		UID:      "/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4",
 	}
 	var err error
 	err = Streamer.addStream(Minfo)
 	if err != nil {
-		fmt.Println("rtmp://202.69.69.180:443/webcast/bshdlive-pc")
+		fmt.Println("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4")
 	}
 
 	err = Streamer.startStreaming(Minfo)
