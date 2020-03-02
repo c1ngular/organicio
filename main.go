@@ -383,7 +383,7 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 		}
 
 		s.currentStreamingUID = suid
-
+		s.outctx.SetStartTime(0)
 		if err := s.outctx.WriteHeader(); err != nil {
 			return fmt.Errorf("error writing header - %s", err)
 		}
@@ -421,6 +421,7 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 			var frames []*gmf.Frame
 
 			if streamIdx == s.mstreams[suid].inastream.Index() {
+
 				frames, err = s.mstreams[suid].inaDecodecCtx.Decode(pkt)
 				if err != nil {
 					return fmt.Errorf("error decoding - %s", err)
@@ -429,18 +430,21 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 				packets, err := s.outaEncodeCtx.Encode(frames, flush)
 				for _, op := range packets {
 
-					gmf.RescaleTs(op, s.mstreams[suid].inastream.TimeBase(), s.outastream.TimeBase())
-					op.SetStreamIndex(s.outastream.Index())
-					if err = s.outctx.WritePacket(op); err != nil {
-						break
-					}
+					if op.Dts() != gmf.AV_NOPTS_VALUE || op.Pts() != gmf.AV_NOPTS_VALUE {
 
+						gmf.RescaleTs(op, s.mstreams[suid].inastream.TimeBase(), s.outastream.TimeBase())
+						op.SetStreamIndex(s.outastream.Index())
+						if err = s.outctx.WritePacket(op); err != nil {
+							break
+						}
+					}
 					op.Free()
 				}
 
 			}
 
 			if streamIdx == s.mstreams[suid].invstream.Index() {
+
 				frames, err = s.mstreams[suid].invDecodecCtx.Decode(pkt)
 				if err != nil {
 					return fmt.Errorf("error decoding - %s", err)
@@ -449,12 +453,16 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 				packets, err := s.outvEncodeCtx.Encode(frames, flush)
 				for _, op := range packets {
 
-					gmf.RescaleTs(op, s.mstreams[suid].invstream.TimeBase(), s.outvstream.TimeBase())
-					op.SetStreamIndex(s.outvstream.Index())
-					if err = s.outctx.WritePacket(op); err != nil {
-						break
-					}
+					if op.Dts() != gmf.AV_NOPTS_VALUE || op.Pts() != gmf.AV_NOPTS_VALUE {
 
+						//op.SetDuration(int64(s.outvstream.TimeBase().AVR().Den / s.outvstream.TimeBase().AVR().Num / s.mstreams[suid].invstream.GetAvgFrameRate().AVR().Num * s.mstreams[suid].invstream.GetAvgFrameRate().AVR().Den))
+						gmf.RescaleTs(op, s.mstreams[suid].invstream.TimeBase(), s.outvstream.TimeBase())
+						op.SetStreamIndex(s.outvstream.Index())
+						if err = s.outctx.WritePacket(op); err != nil {
+							break
+						}
+
+					}
 					op.Free()
 				}
 
@@ -521,12 +529,12 @@ func main() {
 		Vhost:    "",
 		AppName:  "live",
 		StreamId: "text",
-		UID:      "/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4",
+		UID:      "rtmp://202.69.69.180:443/webcast/bshdlive-pc",
 	}
 	var err error
 	err = Streamer.addStream(Minfo)
 	if err != nil {
-		fmt.Println("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4")
+		fmt.Println("rtmp://202.69.69.180:443/webcast/bshdlive-pc")
 	}
 
 	err = Streamer.startStreaming(Minfo)
