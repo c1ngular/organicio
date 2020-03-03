@@ -70,8 +70,65 @@ type Streamer struct {
 	outaEncodeCtx *gmf.CodecCtx
 	outvOptions   []gmf.Option
 	outaOptions   []gmf.Option
+
+	watermarkInCtx *gmf.FmtCtx
+	watermarkInstream *gmf.Stream
+	watermarkFilter *gmf.Filter
+	waterMarkImgPacket *gmf.Packet
+	waterMarkImgFrame *gmf.Frame
+
 	mux           sync.Mutex
 }
+
+func (s *Streamer) initWaterMark(filename string,suid string)error{
+
+	var err error
+	s.watermarkInCtx, err = gmf.NewInputCtx(filename)
+	if(err != nil){
+		s.watermarkInCtx.Free()
+		return fmt.Errorf("failed to create watermark input context for %s",filename)
+	}
+
+	s.watermarkInstream,err=s.watermarkInCtx.GetBestStream(gmf.AVMEDIA_TYPE_VIDEO)
+	if(err != nil){
+		s.watermarkInstream.Free()
+		return fmt.Errorf("failed to create watermark input stream for %s",filename)
+	}
+
+
+	s.watermarkFilter, err = gmf.NewFilter("overlay=10:main_h-overlay_h-10", []*gmf.Stream{s.mstreams[suid].invstream, s.watermarkInstream}, s.outvstream, []*gmf.Option{})
+	if err != nil {
+		s.watermarkFilter.Release()
+		return err
+	}	
+
+	err=s.getWatermarkIMGPacket()
+	return err
+}
+
+/* seems static picture packet size is alway 1 ? to be figured out */
+
+func (s *Streamer) getWatermarkIMGPacket() error {
+	var err error
+	var pkt *gmf.Packet
+
+	
+	pkt, err =s.watermarkInCtx.GetNextPacket()
+	if err != nil && err != io.EOF {
+		if pkt != nil {
+			pkt.Free()
+		}
+		return err
+	} else if err != nil && pkt == nil {
+		return err
+	}
+
+	s.waterMarkImgPacket=pkt
+	s.waterMarkImgFrame, _=s.watermarkInstream.CodecCtx().Decode2(s.waterMarkImgPacket)
+	
+	return err
+}
+
 
 func (s *Streamer) addStream(mInfo StreamInfo) error {
 
@@ -352,6 +409,7 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 		if err != nil {
 			return err
 		}
+
 		err = s.setupOutputVideoEncodeCtx(VIDEO_CODEC_ENCODER_NAME_X264)
 		if err != nil {
 			return err
@@ -366,6 +424,12 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 		if err != nil {
 			return err
 		}
+
+		err =s.initWaterMark("/Users/s1ngular/GoWork/src/github.com/organicio/watermark.png",suid)
+		if err != nil {
+			return err
+		}		
+		
 
 		err = s.setupOutputAudioEncodeCtx(AUDIO_CODEC_NAME_AAC)
 		if err != nil {
@@ -390,38 +454,38 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 
 		var (
 			pkt       *gmf.Packet
+			i         int
 			streamIdx int
-			frames []*gmf.Frame
-			frame *gmf.Frame
-			errInt int			
+			filterInitedOnce bool=      false
+			ret int=0
 		)
 
-		for {		
+		for i = 0; i < 10000; i++ {
 
 			pkt, err = s.mstreams[suid].inctx.GetNextPacket()
 			if err != nil && err != io.EOF {
 				if pkt != nil {
 					pkt.Free()
 				}
-				return fmt.Errorf("error getting next packet - %s", err)
+				log.Fatalf("error getting next packet - %s", err)
 			} else if err != nil && pkt == nil {
-				fmt.Printf("=== flushing \n")
+				log.Printf("=== flushing \n")
 				break
 			}
-			
+
 			streamIdx = pkt.StreamIndex()
-
-
+			var frame *gmf.Frame
+			var frames []*gmf.Frame
 			if streamIdx == s.mstreams[suid].inastream.Index() {
 
-				frame, errInt = s.mstreams[suid].inaDecodecCtx.Decode2(pkt)
-
-				if errInt < 0 && gmf.AvErrno(errInt) == syscall.EAGAIN {
+				frame, ret = s.mstreams[suid].inaDecodecCtx.Decode2(pkt)
+				
+				if ret < 0 && gmf.AvErrno(ret) == syscall.EAGAIN {
 					continue
-				} else if errInt == gmf.AVERROR_EOF {
-					return fmt.Errorf("EOF in audio Decode2, handle it\n")
-				} else if errInt < 0 {
-					return fmt.Errorf("Unexpected error audio - %s\n", gmf.AvError(errInt))
+				} else if ret == gmf.AVERROR_EOF {
+					log.Fatalf("EOF in Decode2, handle it\n")
+				} else if ret < 0 {
+					log.Fatalf("Unexpected error - %s\n", gmf.AvError(ret))
 				}
 
 				packets, err := s.outaEncodeCtx.Encode([]*gmf.Frame{frame}, -1)
@@ -439,22 +503,46 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 					op.Free()
 				}
 
-			}
+			}			
 
 			if streamIdx == s.mstreams[suid].invstream.Index() {
 
-				frame, errInt = s.mstreams[suid].invDecodecCtx.Decode2(pkt)
+				frame, ret = s.mstreams[suid].invDecodecCtx.Decode2(pkt)
 
-				if errInt < 0 && gmf.AvErrno(errInt) == syscall.EAGAIN {
+				if ret < 0 && gmf.AvErrno(ret) == syscall.EAGAIN {
 					continue
-				} else if errInt == gmf.AVERROR_EOF {
-					return fmt.Errorf("EOF in video Decode2, handle it\n")
-				} else if errInt < 0 {
-					return fmt.Errorf("Unexpected error video - %s\n", gmf.AvError(errInt))
+				} else if ret == gmf.AVERROR_EOF {
+					log.Fatalf("EOF in Decode2, handle it\n")
+				} else if ret < 0 {
+					log.Fatalf("Unexpected error - %s\n", gmf.AvError(ret))
 				}
 
-				packets, err := s.outvEncodeCtx.Encode([]*gmf.Frame{frame}, -1)
+				if !filterInitedOnce{
 
+					if err := s.watermarkFilter.AddFrame(frame, 0, 0); err != nil {
+						log.Fatalf("%s\n", err)
+					}
+					filterInitedOnce=true
+
+					if err := s.watermarkFilter.AddFrame(s.waterMarkImgFrame, 1, 4); err != nil {
+						log.Fatalf("%s\n", err)
+					}
+					s.watermarkFilter.RequestOldest()
+					s.watermarkFilter.Close(1)
+
+				}else{
+
+					if err := s.watermarkFilter.AddFrame(frame, 0, 4); err != nil {
+						log.Fatalf("%s\n", err)
+
+					}
+				}
+
+				if frames, err = s.watermarkFilter.GetFrame(); err != nil && len(frames) == 0 {
+					log.Printf("GetFrame() returned '%s', continue\n", err)
+				}
+
+				packets, err := s.outvEncodeCtx.Encode(frames, -1)
 				for _, op := range packets {
 
 					if op.Dts() != gmf.AV_NOPTS_VALUE || op.Pts() != gmf.AV_NOPTS_VALUE {
@@ -470,22 +558,16 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 					op.Free()
 				}
 
-			}
+			}	
 
 			if frame != nil {
 				frame.Free()
 			}
-
-			for _, frame := range frames {
-				if frame != nil {
-					frame.Free()
-				}
-			}
-
+		
 			if pkt != nil {
 				pkt.Free()
-			}
-
+			}			
+			
 		}
 
 		s.outctx.WriteTrailer()
@@ -547,5 +629,5 @@ func main() {
 
 	err = Streamer.startStreaming(Minfo)
 	fmt.Println(err)
-	Streamer.stopStreaming()
+	//Streamer.stopStreaming()
 }
