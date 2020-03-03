@@ -70,7 +70,76 @@ type Streamer struct {
 	outaEncodeCtx *gmf.CodecCtx
 	outvOptions   []gmf.Option
 	outaOptions   []gmf.Option
+
+	watermarkInCtx *gmf.FmtCtx
+	watermarkInstream *gmf.Stream
+	watermarkFilter *gmf.Filter
+	waterMarkImgPacket *gmf.Packet
+	waterMarkImgFrame *gmf.Frame
+
 	mux           sync.Mutex
+}
+
+func (s *Streamer) initWaterMark(filename string,suid string)error{
+
+	var err error
+	s.watermarkInCtx, err = gmf.NewInputCtx(filename)
+	if(err != nil){
+		s.watermarkInCtx.Free()
+		return fmt.Errorf("failed to create watermark input context for %s",filename)
+	}
+
+	s.watermarkInstream,err=s.watermarkInCtx.GetBestStream(gmf.AVMEDIA_TYPE_VIDEO)
+	if(err != nil){
+		s.watermarkInstream.Free()
+		return fmt.Errorf("failed to create watermark input stream for %s",filename)
+	}
+
+
+	s.watermarkFilter, err = gmf.NewFilter("overlay=10:main_h-overlay_h-10", []*gmf.Stream{s.mstreams[suid].invstream, s.watermarkInstream}, s.outvstream, []*gmf.Option{})
+	if err != nil {
+		s.watermarkFilter.Release()
+		return err
+	}	
+
+	err=s.getWatermarkIMGPacket()
+	return err
+}
+
+/* seems static picture packet number  and frame number is alway 1 ? to be figured out */
+
+func (s *Streamer) getWatermarkIMGPacket() error {
+	var err error
+	var pkt *gmf.Packet
+
+	
+	pkt, err =s.watermarkInCtx.GetNextPacket()
+	if err != nil && err != io.EOF {
+		if pkt != nil {
+			pkt.Free()
+		}
+		return err
+	} else if err != nil && pkt == nil {
+		return err
+	}
+
+	s.waterMarkImgPacket=pkt
+	s.waterMarkImgFrame, _=s.watermarkInstream.CodecCtx().Decode2(s.waterMarkImgPacket)
+	
+	return err
+}
+
+func (s *Streamer) clearUpWaterMarkRes(){
+
+	if s.waterMarkImgFrame != nil{
+		s.waterMarkImgFrame.Free()
+	}
+	if s.waterMarkImgPacket != nil{
+		s.waterMarkImgPacket.Free()
+	}	
+	s.watermarkFilter.Release()
+	s.watermarkInstream.Free()
+	s.watermarkInCtx.Free()
 }
 
 func (s *Streamer) addStream(mInfo StreamInfo) error {
@@ -83,7 +152,7 @@ func (s *Streamer) addStream(mInfo StreamInfo) error {
 		m.inctx, err = gmf.NewInputCtx(m.minfo.UID)
 		if err != nil {
 			m.inctx.Free()
-			log.Printf("Error creating context for '%s' - %s\n", m.minfo.UID, err)
+			fmt.Printf("Error creating context for '%s' - %s\n", m.minfo.UID, err)
 			return fmt.Errorf("Error creating context for '%s' - %s", m.minfo.UID, err)
 		}
 
@@ -367,6 +436,11 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 			return err
 		}
 
+		err =s.initWaterMark("/Users/s1ngular/GoWork/src/github.com/organicio/watermark.png",suid)
+		if err != nil {
+			return err
+		}	
+
 		err = s.setupOutputAudioEncodeCtx(AUDIO_CODEC_NAME_AAC)
 		if err != nil {
 			return err
@@ -393,7 +467,8 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 			streamIdx int
 			frames []*gmf.Frame
 			frame *gmf.Frame
-			errInt int			
+			errInt int		
+			filterInitedOnce bool =false	
 		)
 
 		for {		
@@ -453,7 +528,38 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 					return fmt.Errorf("Unexpected error video - %s\n", gmf.AvError(errInt))
 				}
 
-				packets, err := s.outvEncodeCtx.Encode([]*gmf.Frame{frame}, -1)
+
+				if s.watermarkFilter != nil{
+
+					if !filterInitedOnce{
+
+						if err := s.watermarkFilter.AddFrame(frame, 0, 0); err != nil {
+							return fmt.Errorf("%s\n", err)
+						}
+						filterInitedOnce=true
+	
+						if err := s.watermarkFilter.AddFrame(s.waterMarkImgFrame, 1, 4); err != nil {
+							return fmt.Errorf("%s\n", err)
+						}
+						s.watermarkFilter.RequestOldest()
+						s.watermarkFilter.Close(1)
+	
+					}else{
+	
+						if err := s.watermarkFilter.AddFrame(frame, 0, 4); err != nil {
+							return fmt.Errorf("%s\n", err)
+	
+						}
+					}
+	
+					if frames, err = s.watermarkFilter.GetFrame(); err != nil && len(frames) == 0 {
+						fmt.Printf("GetFrame() returned '%s', continue\n", err)
+					}
+	
+					
+				}
+
+				packets, err := s.outvEncodeCtx.Encode(frames, -1)
 
 				for _, op := range packets {
 
@@ -500,6 +606,9 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 
 func (s *Streamer) stopStreaming() {
 
+	if s.watermarkFilter != nil{
+		s.clearUpWaterMarkRes()
+	}
 	s.outvEncodeCtx.Close()
 	s.outaEncodeCtx.Close()
 	s.outvOptions = nil
