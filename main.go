@@ -14,8 +14,8 @@ const (
 	VIDEO_ENCODE_CODEC_NAME_X264    = "libx264"
 	VIDEO_DECODE_CODEC_NAME_X264    = "h264"
 
-	AUDIO_DECODE_CODEC_NAME_AAC = "libfdk_aac"
-	AUDIO_ENCODE_CODEC_NAME_AAC = "libfdk_aac"
+	AUDIO_DECODE_CODEC_NAME_AAC = "aac"
+	AUDIO_ENCODE_CODEC_NAME_AAC = "aac"
 	AUDIO_DECODE_CODEC_NAME_MP3 = "mp3"
 )
 
@@ -62,10 +62,6 @@ type Mstream struct {
 	inctx         *gmf.FmtCtx
 	inastream     *gmf.Stream
 	invstream     *gmf.Stream
-	inaCodec      *gmf.Codec
-	invCodec      *gmf.Codec
-	inaDecodeCtx *gmf.CodecCtx
-	invDecodeCtx *gmf.CodecCtx
 }
 
 type Streamer struct {
@@ -75,12 +71,8 @@ type Streamer struct {
 	outctx        *gmf.FmtCtx
 	outvstream    *gmf.Stream
 	outastream    *gmf.Stream
-	outvCodec     *gmf.Codec
-	outaCodec     *gmf.Codec
-	outvEncodeCtx *gmf.CodecCtx
 	outaEncodeCtx *gmf.CodecCtx
-	outvOptions   []gmf.Option
-	outaOptions   []gmf.Option
+	outvEncodeCtx *gmf.CodecCtx
 
 	waterMarkImageCtx *gmf.FmtCtx
 	wwaterMarkImageStream *gmf.Stream
@@ -91,7 +83,7 @@ type Streamer struct {
 	mux           sync.Mutex
 }
 
-func (s *Streamer) initWaterMarkWithInputVideoStream(filename string,suid string , position string)error{
+func (s *Streamer) initWaterMarkWithInputVideoStream(filename string,invstream *gmf.Stream , position string)error{
 
 	var err error
 	s.waterMarkImageCtx, err = gmf.NewInputCtx(filename)
@@ -107,7 +99,7 @@ func (s *Streamer) initWaterMarkWithInputVideoStream(filename string,suid string
 	}
 
 
-	s.waterMarkOverlayFilter, err = gmf.NewFilter(position, []*gmf.Stream{s.mstreams[suid].invstream, s.wwaterMarkImageStream}, s.outvstream, []*gmf.Option{})
+	s.waterMarkOverlayFilter, err = gmf.NewFilter(position, []*gmf.Stream{invstream, s.wwaterMarkImageStream}, s.outvstream, []*gmf.Option{})
 	if err != nil {
 		s.waterMarkOverlayFilter.Release()
 		return err
@@ -191,6 +183,8 @@ func (s *Streamer) addNewStream(mInfo StreamInfo) error {
 func (s *Streamer) setupInputVideoDecodeCtx(m *Mstream, vdecoderName string) error {
 
 	var err error
+	var invCodec *gmf.Codec
+	var invDecodeCtx *gmf.CodecCtx
 
 	m.invstream, err = m.inctx.GetBestStream(gmf.AVMEDIA_TYPE_VIDEO)
 	if err != nil {
@@ -201,21 +195,21 @@ func (s *Streamer) setupInputVideoDecodeCtx(m *Mstream, vdecoderName string) err
 
 	/* video stream extract and decode context set up */
 
-	m.invCodec, err = gmf.FindDecoder(vdecoderName)
+	invCodec, err = gmf.FindDecoder(vdecoderName)
 	if err != nil {
 		log.Printf("coud not fine video stream decoder for '%s'\n", m.minfo.UID)
 		return fmt.Errorf("coud not fine video stream decoder for '%s'", m.minfo.UID)
 	}
 
-	if m.invDecodeCtx = gmf.NewCodecCtx(m.invCodec); m.invDecodeCtx == nil {
+	if invDecodeCtx = gmf.NewCodecCtx(invCodec); invDecodeCtx == nil {
 		return fmt.Errorf("unable to create video codec context for %s", m.minfo.UID)
 	}
 
-	if err = m.invstream.GetCodecPar().ToContext(m.invDecodeCtx); err != nil {
+	if err = m.invstream.GetCodecPar().ToContext(invDecodeCtx); err != nil {
 		return fmt.Errorf("Failed to copy video decoder parameters to input decoder context  for %s", m.minfo.UID)
 	}
 
-	if err = m.invDecodeCtx.Open(nil); err != nil {
+	if err = invDecodeCtx.Open(nil); err != nil {
 		return fmt.Errorf("Failed to open decoder for video stream  for %s", m.minfo.UID)
 	}
 
@@ -225,6 +219,8 @@ func (s *Streamer) setupInputVideoDecodeCtx(m *Mstream, vdecoderName string) err
 func (s *Streamer) setupInputAudioDecodeCtx(m *Mstream ,adecoderName string) error {
 
 	var err error
+	var inaCodec *gmf.Codec
+	var inaDecodeCtx *gmf.CodecCtx
 
 	m.inastream, err = m.inctx.GetBestStream(gmf.AVMEDIA_TYPE_AUDIO)
 	if err != nil {
@@ -234,21 +230,21 @@ func (s *Streamer) setupInputAudioDecodeCtx(m *Mstream ,adecoderName string) err
 	}
 
 	/* audio stream extract and decode context set up */
-	m.inaCodec, err = gmf.FindDecoder(adecoderName)
+	inaCodec, err = gmf.FindDecoder(adecoderName)
 	if err != nil {
 		log.Printf("coud not fine audio stream decoder for '%s'\n", m.minfo.UID)
 		return fmt.Errorf("coud not fine video stream decoder for '%s'", m.minfo.UID)
 	}
 
-	if m.inaDecodeCtx = gmf.NewCodecCtx(m.inaCodec); m.inaDecodeCtx == nil {
+	if inaDecodeCtx = gmf.NewCodecCtx(inaCodec); inaDecodeCtx == nil {
 		return fmt.Errorf("unable to create audio codec context for %s", m.minfo.UID)
 	}
 
-	if err = m.inastream.GetCodecPar().ToContext(m.inaDecodeCtx); err != nil {
+	if err = m.inastream.GetCodecPar().ToContext(inaDecodeCtx); err != nil {
 		return fmt.Errorf("Failed to copy audio decoder parameters to input decoder context  for %s", m.minfo.UID)
 	}
 
-	if err = m.inaDecodeCtx.Open(nil); err != nil {
+	if err = inaDecodeCtx.Open(nil); err != nil {
 		return fmt.Errorf("Failed to open decoder for audio stream  for %s", m.minfo.UID)
 	}
 	return err
@@ -259,12 +255,6 @@ func (s *Streamer) removeStream(suid string) {
 	if s.streamExisted(suid) {
 
 		/* execution order may matters */
-		s.mstreams[suid].invDecodeCtx.Close()
-		s.mstreams[suid].inaDecodeCtx.Close()
-		s.mstreams[suid].invDecodeCtx.Free()
-		s.mstreams[suid].inaDecodeCtx.Free()
-		s.mstreams[suid].invCodec.Free()
-		s.mstreams[suid].inaCodec.Free()
 		s.mstreams[suid].invstream.Free()
 		s.mstreams[suid].inastream.Free()
 		s.mstreams[suid].inctx.Free() // input context Close called inside Free method
@@ -297,62 +287,57 @@ func (s *Streamer) initStreamingOutputCtx(outputUrl string) error {
 	return err
 }
 
-func (s *Streamer) setupOutputVideoEncodeCtx(vencoderName string) error {
+func (s *Streamer) setupOutputVideoEncodeCtxWithOptions(vencoderName string,invstream *gmf.Stream) (*gmf.CodecCtx ,error) {
 
 	var err error
-
-	s.outvCodec, err = gmf.FindEncoder(vencoderName)
+	var outvCodec *gmf.Codec
+	var outvEncodeCtx *gmf.CodecCtx
+	outvCodec, err = gmf.FindEncoder(vencoderName)
 	if err != nil {
-		return fmt.Errorf("output video encoder not found: '%s'", err)
+		return outvEncodeCtx, fmt.Errorf("output video encoder not found: '%s'", err)
 	}
 
-	if s.outvEncodeCtx = gmf.NewCodecCtx(s.outvCodec); s.outvEncodeCtx == nil {
-		return fmt.Errorf("create output video encoder context failed: '%s'", err)
+	if outvEncodeCtx = gmf.NewCodecCtx(outvCodec); outvEncodeCtx == nil {
+		return outvEncodeCtx, fmt.Errorf("create output video encoder context failed: '%s'", err)
 	}
 
-	return err
-
-}
-
-func (s *Streamer) setupOutputVideoEncodeCtxOptions(suid string) error {
-
-	var err error
-
-	s.outvOptions = []gmf.Option{
+	outvOptions := []gmf.Option{
 		{Key: "time_base", Val: gmf.AVR{Num: 1, Den: STREAM_VIDEO_FRAMERATE}},
-		//{Key: "pixel_format", Val: gmf.AV_PIX_FMT_YUV420P},
-		{Key: "video_size", Val: s.mstreams[suid].invDecodeCtx.GetVideoSize()},
+		{Key: "pixel_format", Val: VIDEO_OUTPUT_PIX_FORMAT},
+		{Key: "video_size", Val: invstream.CodecCtx().GetVideoSize()},
 		{Key: "b", Val: 500000},
 	}
-	s.outvEncodeCtx.SetPixFmt(s.mstreams[suid].invDecodeCtx.PixFmt())
-	s.outvEncodeCtx.SetProfile(gmf.FF_PROFILE_H264_BASELINE)
-	s.outvEncodeCtx.SetOptions(s.outvOptions)
+	//s.outvEncodeCtx.SetPixFmt(invstream.CodecCtx().PixFmt())
+	
+	outvEncodeCtx.SetProfile(VIDEO_OUTPUT_264_PROFILE)
+	outvEncodeCtx.SetOptions(outvOptions)
 
 	if s.outctx.IsGlobalHeader() {
-		s.outvEncodeCtx.SetFlag(gmf.CODEC_FLAG_GLOBAL_HEADER)
+		outvEncodeCtx.SetFlag(gmf.CODEC_FLAG_GLOBAL_HEADER)
 	}
 
-	if s.outvCodec.IsExperimental() {
-		s.outvEncodeCtx.SetStrictCompliance(gmf.FF_COMPLIANCE_EXPERIMENTAL)
+	if outvCodec.IsExperimental() {
+		outvEncodeCtx.SetStrictCompliance(gmf.FF_COMPLIANCE_EXPERIMENTAL)
 	}
 
-	if err = s.outvEncodeCtx.Open(nil); err != nil {
-		return fmt.Errorf("Failed to open encoder for video stream")
-	}
+	if err = outvEncodeCtx.Open(nil); err != nil {
+		return outvEncodeCtx , fmt.Errorf("Failed to open encoder for video stream")
+	}	
 
-	return err
+	s.outvEncodeCtx=outvEncodeCtx
+	return outvEncodeCtx,err
 
 }
 
-func (s *Streamer) setupOutputVideoStream() error {
+func (s *Streamer) createOutputVideoStreamWithEncodeCtx(vencodeCtx *gmf.CodecCtx) error {
 
 	var err error
 
-	if s.outvstream = s.outctx.NewStream(s.outvCodec); s.outvstream == nil {
+	if s.outvstream = s.outctx.NewStream(vencodeCtx.Codec()); s.outvstream == nil {
 		return fmt.Errorf("unable to create new video stream in output context: '%s'", err)
 	}
 
-	if s.outvstream.GetCodecPar().FromContext(s.outvEncodeCtx); err != nil {
+	if s.outvstream.GetCodecPar().FromContext(vencodeCtx); err != nil {
 
 		return fmt.Errorf("Failed to copy output video encoder parameters to output video stream - %s", err)
 	}
@@ -363,59 +348,55 @@ func (s *Streamer) setupOutputVideoStream() error {
 	return err
 }
 
-func (s *Streamer) setupOutputAudioEncodeCtx() error {
+func (s *Streamer) setupOutputAudioEncodeCtxWithOptions(aencoderName string,inastream *gmf.Stream) (*gmf.CodecCtx ,error) {
 
 	var err error
+	var outaCodec *gmf.Codec
+	var outaEncodeCtx *gmf.CodecCtx
 
-	s.outaCodec, err = gmf.FindEncoder(AUDIO_ENCODE_CODEC_NAME_AAC)
+	outaCodec, err = gmf.FindEncoder(aencoderName)
 	if err != nil {
-		return fmt.Errorf("audio encoder not found: '%s'", err)
+		return outaEncodeCtx, fmt.Errorf("audio encoder not found: '%s'", err)
 	}
 
-	if s.outaEncodeCtx = gmf.NewCodecCtx(s.outaCodec); s.outaEncodeCtx == nil {
-		return fmt.Errorf("create audio encoder context failed: '%s'", err)
+	if outaEncodeCtx = gmf.NewCodecCtx(outaCodec); outaEncodeCtx == nil {
+		return outaEncodeCtx,fmt.Errorf("create audio encoder context failed: '%s'", err)
 	}
-	return err
-}
 
-func (s *Streamer) setupOutputAudioEncodeCtxOptions(suid string) error {
-
-	var err error
-
-	s.outaOptions = []gmf.Option{
+	outaOptions:= []gmf.Option{
 		{Key: "time_base", Val: gmf.AVR{Num: 1, Den: STREAM_VIDEO_FRAMERATE}},
-		{Key: "ar", Val: s.mstreams[suid].inaDecodeCtx.SampleRate()},
-		{Key: "ac", Val: s.mstreams[suid].inaDecodeCtx.Channels()},
-		{Key: "channel_layout", Val: s.mstreams[suid].inaDecodeCtx.GetDefaultChannelLayout(s.mstreams[suid].inaDecodeCtx.Channels())},
+		{Key: "ar", Val: inastream.CodecCtx().SampleRate()},
+		{Key: "ac", Val: inastream.CodecCtx().Channels()},
+		{Key: "channel_layout", Val: inastream.CodecCtx().GetDefaultChannelLayout(inastream.CodecCtx().Channels())},
 	}
-	s.outaEncodeCtx.SetSampleFmt(s.mstreams[suid].inaDecodeCtx.SampleFmt())
-	s.outaEncodeCtx.SelectSampleRate()
-	s.outaEncodeCtx.SetOptions(s.outaOptions)
+	outaEncodeCtx.SetSampleFmt(AUDIO_AAC_OUTPUT_SAMPLE_FORMAT)
+	outaEncodeCtx.SelectSampleRate()
+	outaEncodeCtx.SetOptions(outaOptions)
 
 	if s.outctx.IsGlobalHeader() {
-		s.outaEncodeCtx.SetFlag(gmf.CODEC_FLAG_GLOBAL_HEADER)
+		outaEncodeCtx.SetFlag(gmf.CODEC_FLAG_GLOBAL_HEADER)
 	}
 
-	if s.outaCodec.IsExperimental() {
-		s.outaEncodeCtx.SetStrictCompliance(gmf.FF_COMPLIANCE_EXPERIMENTAL)
+	if outaCodec.IsExperimental() {
+		outaEncodeCtx.SetStrictCompliance(gmf.FF_COMPLIANCE_EXPERIMENTAL)
 	}
 
-	if err = s.outaEncodeCtx.Open(nil); err != nil {
-		return fmt.Errorf("Failed to open encoder for audio stream  for %s", suid)
+	if err = outaEncodeCtx.Open(nil); err != nil {
+		return outaEncodeCtx ,fmt.Errorf("Failed to open encoder for audio stream")
 	}
-
-	return err
+	s.outaEncodeCtx=outaEncodeCtx
+	return outaEncodeCtx ,err
 }
 
-func (s *Streamer) setupOutputAudioStream() error {
+func (s *Streamer) createOutputAudioStreamWithEncodeCtx(aencodeCtx *gmf.CodecCtx) error {
 
 	var err error
 
-	if s.outastream = s.outctx.NewStream(s.outaCodec); s.outastream == nil {
+	if s.outastream = s.outctx.NewStream(aencodeCtx.Codec()); s.outastream == nil {
 		return fmt.Errorf("unable to create new audio stream in output context: '%s'", err)
 	}
 
-	if s.outastream.GetCodecPar().FromContext(s.outaEncodeCtx); err != nil {
+	if s.outastream.GetCodecPar().FromContext(aencodeCtx); err != nil {
 
 		return fmt.Errorf("Failed to copy audio encoder parameters to output stream - %s", err)
 	}
@@ -426,6 +407,8 @@ func (s *Streamer) setupOutputAudioStream() error {
 func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 
 	var err error
+	var outvEncodeCtx *gmf.CodecCtx
+	var outaEncodeCtx *gmf.CodecCtx
 	suid := mInfo.UID
 	if s.currentStreamingUID != suid {
 
@@ -433,43 +416,34 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 		if err != nil {
 			return err
 		}
-		err = s.setupOutputVideoEncodeCtx(VIDEO_ENCODE_CODEC_NAME_X264)
+		outvEncodeCtx,err = s.setupOutputVideoEncodeCtxWithOptions(VIDEO_ENCODE_CODEC_NAME_X264,s.mstreams[suid].invstream)
 		if err != nil {
 			return err
 		}
 
-		err = s.setupOutputVideoEncodeCtxOptions(suid)
+		err = s.createOutputVideoStreamWithEncodeCtx(outvEncodeCtx)
 		if err != nil {
 			return err
 		}
 
-		err = s.setupOutputVideoStream()
-		if err != nil {
-			return err
-		}
-
-		err =s.initWaterMarkWithInputVideoStream(WATERMARK_IMG_URL,suid,WATERMARK_POSITION_TOP_RIGHT)
+		err =s.initWaterMarkWithInputVideoStream(WATERMARK_IMG_URL,s.mstreams[suid].invstream,WATERMARK_POSITION_TOP_RIGHT)
 		if err != nil {
 			return err
 		}	
 
-		err = s.setupOutputAudioEncodeCtx()
+		outaEncodeCtx,err = s.setupOutputAudioEncodeCtxWithOptions(AUDIO_ENCODE_CODEC_NAME_AAC,s.mstreams[suid].inastream)
 		if err != nil {
 			return err
 		}
 
-		err = s.setupOutputAudioEncodeCtxOptions(suid)
-		if err != nil {
-			return err
-		}
 
-		err = s.setupOutputAudioStream()
+		err = s.createOutputAudioStreamWithEncodeCtx(outaEncodeCtx)
 		if err != nil {
 			return err
 		}
 
 		s.currentStreamingUID = suid
-		s.outctx.SetStartTime(0)
+		//s.outctx.SetStartTime(0)
 		if err := s.outctx.WriteHeader(); err != nil {
 			return fmt.Errorf("error writing header - %s", err)
 		}
@@ -497,12 +471,11 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 			}
 			
 			streamIdx = pkt.StreamIndex()
-
-
+			
 			if streamIdx == s.mstreams[suid].inastream.Index() {
-
-				frame, errInt = s.mstreams[suid].inaDecodeCtx.Decode2(pkt)
-
+				
+				frame, errInt = s.mstreams[suid].inastream.CodecCtx().Decode2(pkt)
+				
 				if errInt < 0 && gmf.AvErrno(errInt) == syscall.EAGAIN {
 					continue
 				} else if errInt == gmf.AVERROR_EOF {
@@ -510,8 +483,11 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 				} else if errInt < 0 {
 					return fmt.Errorf("Unexpected error audio - %s\n", gmf.AvError(errInt))
 				}
-
+				
 				packets, err := s.outaEncodeCtx.Encode([]*gmf.Frame{frame}, -1)
+				if( err != nil){
+					return err
+				}
 
 				for _, op := range packets {
 
@@ -529,8 +505,8 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 			}
 
 			if streamIdx == s.mstreams[suid].invstream.Index() {
-
-				frame, errInt = s.mstreams[suid].invDecodeCtx.Decode2(pkt)
+				
+				frame, errInt = s.mstreams[suid].invstream.CodecCtx().Decode2(pkt)
 
 				if errInt < 0 && gmf.AvErrno(errInt) == syscall.EAGAIN {
 					continue
@@ -572,6 +548,9 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 				}
 
 				packets, err := s.outvEncodeCtx.Encode(frames, -1)
+				if( err != nil){
+					return err
+				}
 
 				for _, op := range packets {
 
@@ -587,6 +566,7 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 					}
 					op.Free()
 				}
+
 
 			}
 
@@ -621,35 +601,17 @@ func (s *Streamer) stopStreaming() {
 	if s.waterMarkOverlayFilter != nil{
 		s.releaseWaterMarkResource()
 	}
+
 	s.outvEncodeCtx.Close()
 	s.outaEncodeCtx.Close()
-	s.outvOptions = nil
-	s.outaOptions = nil
 	s.outvEncodeCtx.Free()
 	s.outaEncodeCtx.Free()
-	s.outvCodec.Free()
-	s.outaCodec.Free()
 	s.outvstream.Free()
 	s.outastream.Free()
 	s.outctx.Free()
 	s.currentStreamingUID = ""
 }
 
-func (*Streamer) setCurrentStreaming() {
-
-}
-
-func (s *Streamer) rotateStreaming() {
-
-}
-
-func (s *Streamer) replaceAudioStreamingWithMp3() {
-
-}
-
-func (s *Streamer) changeStreamingResolution() {
-
-}
 
 func main() {
 	Streamer := &Streamer{mstreams: make(map[string]*Mstream)}
