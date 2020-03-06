@@ -187,7 +187,7 @@ func (s *Streamer) getMp3sFrames() ([]*gmf.Frame, error) {
 	}
 
 	var actx = s.mp3InCtxs[s.currentStreamingMp3Index]
-	actx.Dump()
+
 	pkt, err = actx.GetNextPacket()
 	if err != nil && err != io.EOF {
 		if pkt != nil {
@@ -222,7 +222,7 @@ func (s *Streamer) getMp3sFrames() ([]*gmf.Frame, error) {
 			return frames, fmt.Errorf("Unexpected error mp3 audio - %s\n", gmf.AvError(errInt))
 		}
 
-		frames = gmf.DefaultResampler(s.outastream, []*gmf.Frame{frame}, true)
+		frames = gmf.DefaultResampler(s.outastream, []*gmf.Frame{frame}, false)
 		return frames, nil
 
 	} else {
@@ -626,56 +626,54 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 
 			if streamIdx == s.mstreams[suid].inastream.Index() {
 
-				frame, errInt = s.mstreams[suid].inastream.CodecCtx().Decode2(pkt)
+				if len(s.mp3InStreams) != 0 {
 
-				if errInt < 0 && gmf.AvErrno(errInt) == syscall.EAGAIN {
-					continue
-				} else if errInt == gmf.AVERROR_EOF {
-					return fmt.Errorf("EOF in audio Decode2, handle it\n")
-				} else if errInt < 0 {
-					return fmt.Errorf("Unexpected error audio - %s\n", gmf.AvError(errInt))
-				}
-
-				fmt.Printf("\n decoded frame Format : %d \n", frame.Format())
-				fmt.Printf("\n decoded frame Channels : %d \n", frame.Channels())
-				fmt.Printf("\n decoded frame NbSamples : %d \n", frame.NbSamples())
-				fmt.Printf("\n decoded frame ChannelLayout : %d \n", frame.GetChannelLayout())
-
-				resampleMp3Options := []*gmf.Option{
-					{Key: "in_channel_layout", Val: s.mstreams[suid].inastream.CodecCtx().ChannelLayout()},
-					{Key: "out_channel_layout", Val: s.outaEncodeCtx.ChannelLayout()},
-					{Key: "in_sample_rate", Val: s.mstreams[suid].inastream.CodecCtx().SampleRate()},
-					{Key: "out_sample_rate", Val: s.outaEncodeCtx.SampleRate()},
-					{Key: "in_sample_fmt", Val: gmf.SampleFormat(s.mstreams[suid].inastream.CodecCtx().SampleFmt())},
-					{Key: "out_sample_fmt", Val: gmf.SampleFormat(s.outaEncodeCtx.SampleFmt())},
-				}
-
-				if s.outastream.SwrCtx == nil {
-
-					if s.outastream.SwrCtx, err = gmf.NewSwrCtx(resampleMp3Options, s.outaEncodeCtx.Channels(), s.outaEncodeCtx.SampleFmt()); err != nil {
-						fmt.Print("create NEw SwR")
-						panic(err)
+					frames, err = s.getMp3sFrames()
+					if err != nil {
+						return err
 					}
-					s.outastream.AvFifo = gmf.NewAVAudioFifo(s.mstreams[suid].inastream.CodecCtx().SampleFmt(), s.mstreams[suid].inastream.CodecCtx().Channels(), 1024)
+					fmt.Printf(" \n mp3 resample frame length: %d \n", len(frames))
 
 				} else {
-					s.outastream.AvFifo.Free()
-					s.outastream.SwrCtx.Free()
-					if s.outastream.SwrCtx, err = gmf.NewSwrCtx(resampleMp3Options, s.outaEncodeCtx.Channels(), s.outaEncodeCtx.SampleFmt()); err != nil {
-						fmt.Print("recreate NEw SwR")
-						panic(err)
+
+					frame, errInt = s.mstreams[suid].inastream.CodecCtx().Decode2(pkt)
+
+					if errInt < 0 && gmf.AvErrno(errInt) == syscall.EAGAIN {
+						continue
+					} else if errInt == gmf.AVERROR_EOF {
+						return fmt.Errorf("EOF in audio Decode2, handle it\n")
+					} else if errInt < 0 {
+						return fmt.Errorf("Unexpected error audio - %s\n", gmf.AvError(errInt))
 					}
-					s.outastream.AvFifo = gmf.NewAVAudioFifo(s.mstreams[suid].inastream.CodecCtx().SampleFmt(), s.mstreams[suid].inastream.CodecCtx().Channels(), 1024)
-				}
 
-				frames = gmf.DefaultResampler(s.outastream, []*gmf.Frame{frame}, false)
+					resampleMp3Options := []*gmf.Option{
+						{Key: "in_channel_layout", Val: s.mstreams[suid].inastream.CodecCtx().ChannelLayout()},
+						{Key: "out_channel_layout", Val: s.outaEncodeCtx.ChannelLayout()},
+						{Key: "in_sample_rate", Val: s.mstreams[suid].inastream.CodecCtx().SampleRate()},
+						{Key: "out_sample_rate", Val: s.outaEncodeCtx.SampleRate()},
+						{Key: "in_sample_fmt", Val: gmf.SampleFormat(s.mstreams[suid].inastream.CodecCtx().SampleFmt())},
+						{Key: "out_sample_fmt", Val: gmf.SampleFormat(s.outaEncodeCtx.SampleFmt())},
+					}
 
-				for _, frame = range frames {
+					if s.outastream.SwrCtx == nil {
 
-					fmt.Printf("\n resampled frame Format : %d \n", frame.Format())
-					fmt.Printf("\n resampled frame Channels : %d \n", frame.Channels())
-					fmt.Printf("\n resampled frame NbSamples : %d \n", frame.NbSamples())
-					fmt.Printf("\n resampled frame ChannelLayout : %d \n", frame.GetChannelLayout())
+						if s.outastream.SwrCtx, err = gmf.NewSwrCtx(resampleMp3Options, s.outaEncodeCtx.Channels(), s.outaEncodeCtx.SampleFmt()); err != nil {
+							fmt.Print("create NEw SwR")
+							panic(err)
+						}
+						s.outastream.AvFifo = gmf.NewAVAudioFifo(s.mstreams[suid].inastream.CodecCtx().SampleFmt(), s.mstreams[suid].inastream.CodecCtx().Channels(), 1024)
+
+					} else {
+						s.outastream.AvFifo.Free()
+						s.outastream.SwrCtx.Free()
+						if s.outastream.SwrCtx, err = gmf.NewSwrCtx(resampleMp3Options, s.outaEncodeCtx.Channels(), s.outaEncodeCtx.SampleFmt()); err != nil {
+							fmt.Print("recreate NEw SwR")
+							panic(err)
+						}
+						s.outastream.AvFifo = gmf.NewAVAudioFifo(s.mstreams[suid].inastream.CodecCtx().SampleFmt(), s.mstreams[suid].inastream.CodecCtx().Channels(), 1024)
+					}
+
+					frames = gmf.DefaultResampler(s.outastream, []*gmf.Frame{frame}, false)
 				}
 
 				packets, err := s.outaEncodeCtx.Encode(frames, -1)
