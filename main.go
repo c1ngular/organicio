@@ -46,8 +46,8 @@ var (
 
 var (
 
-	//AUDIO_AAC_OUTPUT_SAMPLE_FORMAT int32 =gmf.AV_SAMPLE_FMT_FLTP
-	//VIDEO_OUTPUT_PIX_FORMAT int32 =gmf.AV_PIX_FMT_YUV420P
+	AUDIO_AAC_OUTPUT_SAMPLE_FORMAT int32 =gmf.AV_SAMPLE_FMT_FLTP
+	VIDEO_OUTPUT_PIX_FORMAT int32 =gmf.AV_PIX_FMT_YUV420P
 	VIDEO_OUTPUT_264_PROFILE int =gmf.FF_PROFILE_H264_BASELINE
 )
 
@@ -463,16 +463,10 @@ func (s *Streamer) setupOutputVideoEncodeCtxWithOptions(vencoderName string,invs
 		return outvEncodeCtx, fmt.Errorf("create output video encoder context failed: '%s'", err)
 	}
 
-	outvOptions := []gmf.Option{
-		{Key: "time_base", Val: gmf.AVR{Num: 1, Den: STREAM_VIDEO_FRAMERATE}},
-		{Key: "pixel_format", Val: invstream.CodecCtx().PixFmt()},
-		{Key: "video_size", Val: invstream.CodecCtx().GetVideoSize()},
-		{Key: "b", Val: 500000},
-	}
-	outvEncodeCtx.SetPixFmt(invstream.CodecCtx().PixFmt())
-	
+	outvEncodeCtx.SetTimeBase(gmf.AVR{Num: 1, Den: STREAM_VIDEO_FRAMERATE})
+	outvEncodeCtx.SetPixFmt(VIDEO_OUTPUT_PIX_FORMAT)
+	outvEncodeCtx.SetDimension(invstream.CodecCtx().Width(), invstream.CodecCtx().Height())
 	outvEncodeCtx.SetProfile(VIDEO_OUTPUT_264_PROFILE)
-	outvEncodeCtx.SetOptions(outvOptions)
 
 	if s.outctx.IsGlobalHeader() {
 		outvEncodeCtx.SetFlag(gmf.CODEC_FLAG_GLOBAL_HEADER)
@@ -524,15 +518,12 @@ func (s *Streamer) setupOutputAudioEncodeCtxWithOptions(aencoderName string,inas
 		return outaEncodeCtx,fmt.Errorf("create audio encoder context failed: '%s'", err)
 	}
 
-	outaOptions:= []gmf.Option{
-		{Key: "time_base", Val: gmf.AVR{Num: 1, Den: STREAM_VIDEO_FRAMERATE}},
-		{Key: "ar", Val: inastream.CodecCtx().SampleRate()},
-		{Key: "ac", Val: inastream.CodecCtx().Channels()},
-		{Key: "channel_layout", Val: inastream.CodecCtx().GetDefaultChannelLayout(inastream.CodecCtx().Channels())},
-	}
-	outaEncodeCtx.SetSampleFmt(inastream.CodecCtx().SampleFmt())
-	outaEncodeCtx.SelectSampleRate()
-	outaEncodeCtx.SetOptions(outaOptions)
+
+	outaEncodeCtx.SetTimeBase(gmf.AVR{Num: 1, Den: 22050})
+	outaEncodeCtx.SetSampleRate(22050)
+	outaEncodeCtx.SetChannels(2)
+	outaEncodeCtx.SetChannelLayout(outaEncodeCtx.GetDefaultChannelLayout(2))
+	outaEncodeCtx.SetSampleFmt(AUDIO_AAC_OUTPUT_SAMPLE_FORMAT)
 
 	if s.outctx.IsGlobalHeader() {
 		outaEncodeCtx.SetFlag(gmf.CODEC_FLAG_GLOBAL_HEADER)
@@ -561,7 +552,7 @@ func (s *Streamer) createOutputAudioStreamWithEncodeCtx(aencodeCtx *gmf.CodecCtx
 
 		return fmt.Errorf("Failed to copy audio encoder parameters to output stream - %s", err)
 	}
-	s.outastream.SetTimeBase(gmf.AVR{Num: 1, Den: STREAM_VIDEO_FRAMERATE})
+	s.outastream.SetTimeBase(gmf.AVR{Num: 1, Den: 22050})
 	return err
 }
 
@@ -627,7 +618,7 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 			filterInitedOnce bool =false	
 		)
 
-		for {		
+		for  i:=0;i<3000;i++{		
 
 			pkt, err = s.mstreams[suid].inctx.GetNextPacket()
 			if err != nil && err != io.EOF {
@@ -644,47 +635,22 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 			
 			if streamIdx == s.mstreams[suid].inastream.Index() {
 
-				if len(s.mp3InCtxs) != 0{
-
-					if frames,err=s.getMp3sFrames();err != nil{
-
-						fmt.Print(err)
-					}
-					fmt.Printf("\n mp3 frames size : %d \n",len(frames))
-
-				}else{
-
-					frame, errInt = s.mstreams[suid].inastream.CodecCtx().Decode2(pkt)
-				
-					if errInt < 0 && gmf.AvErrno(errInt) == syscall.EAGAIN {
-						continue
-					} else if errInt == gmf.AVERROR_EOF {
-						return fmt.Errorf("EOF in audio Decode2, handle it\n")
-					} else if errInt < 0 {
-						return fmt.Errorf("Unexpected error audio - %s\n", gmf.AvError(errInt))
-					}
-
-					resampleOptions := []*gmf.Option{
-						{Key: "in_channel_layout", Val: s.mstreams[suid].inastream.CodecCtx().ChannelLayout()},
-						{Key: "out_channel_layout", Val: s.outaEncodeCtx.ChannelLayout()},
-						{Key: "in_sample_rate", Val: s.mstreams[suid].inastream.CodecCtx().SampleRate()},
-						{Key: "out_sample_rate", Val: s.outaEncodeCtx.SampleRate()},
-						{Key: "in_sample_fmt", Val: gmf.SampleFormat(s.mstreams[suid].inastream.CodecCtx().SampleFmt())},
-						{Key: "out_sample_fmt", Val: gmf.SampleFormat(s.outaEncodeCtx.SampleFmt())},
-					}
+				frame, errInt = s.mstreams[suid].inastream.CodecCtx().Decode2(pkt)
 			
-					if s.outastream.SwrCtx, err = gmf.NewSwrCtx(resampleOptions, s.outaEncodeCtx.Channels(), s.outaEncodeCtx.SampleFmt()); err != nil {
-						fmt.Print("create NEw SwR")
-						panic(err)
-					}
-					s.outastream.AvFifo = gmf.NewAVAudioFifo(s.mstreams[suid].inastream.CodecCtx().SampleFmt(), s.mstreams[suid].inastream.CodecCtx().Channels(), 1024)
-
-					frames = gmf.DefaultResampler(s.outastream, []*gmf.Frame{frame}, false)	
-
+				if errInt < 0 && gmf.AvErrno(errInt) == syscall.EAGAIN {
+					continue
+				} else if errInt == gmf.AVERROR_EOF {
+					return fmt.Errorf("EOF in audio Decode2, handle it\n")
+				} else if errInt < 0 {
+					return fmt.Errorf("Unexpected error audio - %s\n", gmf.AvError(errInt))
 				}
 
-				
-				packets, err := s.outaEncodeCtx.Encode(frames, -1)
+				/*fmt.Printf("\n decoded frame Format : %d \n",frame.Format())
+				fmt.Printf("\n decoded frame Channels : %d \n",frame.Channels())
+				fmt.Printf("\n decoded frame NbSamples : %d \n",frame.NbSamples())
+				fmt.Printf("\n decoded frame ChannelLayout : %d \n",frame.GetChannelLayout())*/
+		
+				packets, err := s.outaEncodeCtx.Encode([]*gmf.Frame{frame}, -1)
 				if( err != nil){
 					return fmt.Errorf("\n audio encode failed \n")
 				}
@@ -701,6 +667,7 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 					}
 					op.Free()
 				}
+
 
 			}
 
