@@ -74,7 +74,7 @@ type Streamer struct {
 	outvEncodeCtx *gmf.CodecCtx
 
 	waterMarkImageCtx      *gmf.FmtCtx
-	wwaterMarkImageStream  *gmf.Stream
+	waterMarkImageStream   *gmf.Stream
 	waterMarkOverlayFilter *gmf.Filter
 	waterMarkImagePacket   *gmf.Packet
 	waterMarkImageFrame    *gmf.Frame
@@ -239,13 +239,13 @@ func (s *Streamer) initWaterMarkWithInputVideoStream(filename string, invstream 
 		return fmt.Errorf("failed to create watermark input context for %s", filename)
 	}
 
-	s.wwaterMarkImageStream, err = s.waterMarkImageCtx.GetBestStream(gmf.AVMEDIA_TYPE_VIDEO)
+	s.waterMarkImageStream, err = s.waterMarkImageCtx.GetBestStream(gmf.AVMEDIA_TYPE_VIDEO)
 	if err != nil {
-		s.wwaterMarkImageStream.Free()
+		s.waterMarkImageStream.Free()
 		return fmt.Errorf("failed to create watermark input stream for %s", filename)
 	}
 
-	s.waterMarkOverlayFilter, err = gmf.NewFilter(position, []*gmf.Stream{invstream, s.wwaterMarkImageStream}, s.outvstream, []*gmf.Option{})
+	s.waterMarkOverlayFilter, err = gmf.NewFilter(position, []*gmf.Stream{invstream, s.waterMarkImageStream}, s.outvstream, []*gmf.Option{})
 	if err != nil {
 		s.waterMarkOverlayFilter.Release()
 		return err
@@ -272,7 +272,7 @@ func (s *Streamer) decodeWaterMarkImageFrame() error {
 	}
 
 	s.waterMarkImagePacket = pkt
-	s.waterMarkImageFrame, _ = s.wwaterMarkImageStream.CodecCtx().Decode2(s.waterMarkImagePacket)
+	s.waterMarkImageFrame, _ = s.waterMarkImageStream.CodecCtx().Decode2(s.waterMarkImagePacket)
 
 	return err
 }
@@ -286,7 +286,7 @@ func (s *Streamer) releaseWaterMarkResource() {
 		s.waterMarkImagePacket.Free()
 	}
 	s.waterMarkOverlayFilter.Release()
-	s.wwaterMarkImageStream.Free()
+	s.waterMarkImageStream.Free()
 	s.waterMarkImageCtx.Free()
 }
 
