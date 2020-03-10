@@ -507,8 +507,7 @@ func (s *Streamer) setupOutputAudioEncodeCtxWithOptions(aencoderName string, ina
 	outaEncodeCtx.SetChannels(2)
 	outaEncodeCtx.SetChannelLayout(outaEncodeCtx.GetDefaultChannelLayout(2))
 	outaEncodeCtx.SetSampleFmt(AUDIO_AAC_OUTPUT_SAMPLE_FORMAT)
-	fmt.Printf("\n set outa encoder channle layout : %d\n", outaEncodeCtx.GetDefaultChannelLayout(2))
-	fmt.Printf("\n outa encoder channle layout : %d\n", outaEncodeCtx.ChannelLayout())
+
 	if s.outctx.IsGlobalHeader() {
 		outaEncodeCtx.SetFlag(gmf.CODEC_FLAG_GLOBAL_HEADER)
 	}
