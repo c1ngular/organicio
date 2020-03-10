@@ -176,14 +176,6 @@ func (s *Streamer) getMp3sFrames() ([]*gmf.Frame, error) {
 		}
 		s.outastream.AvFifo = gmf.NewAVAudioFifo(s.mp3InStreams[s.currentStreamingMp3Index].CodecCtx().SampleFmt(), s.mp3InStreams[s.currentStreamingMp3Index].CodecCtx().Channels(), 1024)
 
-	} else {
-		s.outastream.AvFifo.Free()
-		s.outastream.SwrCtx.Free()
-		if s.outastream.SwrCtx, err = gmf.NewSwrCtx(resampleMp3Options, s.outaEncodeCtx.Channels(), s.outaEncodeCtx.SampleFmt()); err != nil {
-			fmt.Print("recreate NEw SwR")
-			panic(err)
-		}
-		s.outastream.AvFifo = gmf.NewAVAudioFifo(s.mp3InStreams[s.currentStreamingMp3Index].CodecCtx().SampleFmt(), s.mp3InStreams[s.currentStreamingMp3Index].CodecCtx().Channels(), 1024)
 	}
 
 	var actx = s.mp3InCtxs[s.currentStreamingMp3Index]
