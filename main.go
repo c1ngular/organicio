@@ -648,7 +648,7 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 
 					if s.outastream.SwrCtx == nil {
 
-						resampleMp3Options := []*gmf.Option{
+						outgoingAudioResampleOptions := []*gmf.Option{
 							{Key: "in_channel_layout", Val: s.mstreams[suid].inastream.CodecCtx().ChannelLayout()},
 							{Key: "out_channel_layout", Val: s.outaEncodeCtx.ChannelLayout()},
 							{Key: "in_sample_rate", Val: s.mstreams[suid].inastream.CodecCtx().SampleRate()},
@@ -657,7 +657,7 @@ func (s *Streamer) startStreaming(mInfo StreamInfo) error {
 							{Key: "out_sample_fmt", Val: gmf.SampleFormat(s.outaEncodeCtx.SampleFmt())},
 						}
 
-						if s.outastream.SwrCtx, err = gmf.NewSwrCtx(resampleMp3Options, s.outaEncodeCtx.Channels(), s.outaEncodeCtx.SampleFmt()); err != nil {
+						if s.outastream.SwrCtx, err = gmf.NewSwrCtx(outgoingAudioResampleOptions, s.outaEncodeCtx.Channels(), s.outaEncodeCtx.SampleFmt()); err != nil {
 							fmt.Print("create NEw SwR")
 							panic(err)
 						}
