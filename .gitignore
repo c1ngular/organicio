@@ -10,6 +10,8 @@
 *.mp3
 *.mp4
 *.flv
+mp3s
+ffmpeg
 .DS_Store
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
