@@ -156,13 +156,11 @@ func (s *Streamer) startStreamerProcess() {
 	}
 
 	if _, err := os.Stat(MP3S_FOLDER_PATH + MP3_MERGED_FILENAME); err == nil {
-
-		mp3StreamArg := []string{
+		args = append(args, []string{
 			"-stream_loop", "-1",
 			"-i", MP3S_FOLDER_PATH + MP3_MERGED_FILENAME,
 			"-filter_complex", "[1:a]volume=" + FFMPEG_MP3_BGSOUND_VOLUME + ",apad[A];[0:a][A]amerge[out]",
-		}
-		args = append(args, mp3StreamArg...)
+		}...)
 	}
 
 	args = append(args, []string{
@@ -184,24 +182,17 @@ func (s *Streamer) startStreamerProcess() {
 			"0:v",
 			"-map",
 			"[out]",
-
-			"-y",
-			"-r", FFMPEG_STREAM_FRAMERATE,
-			"-flush_packets", "0",
-			"-f", "mpegts",
-			"udp://" + LOCALHOST + ":" + strconv.Itoa(1234) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE + "&overrun_nonfatal=1",
 		}...)
 
-	} else {
-		args = append(args, []string{
-
-			"-y",
-			"-r", FFMPEG_STREAM_FRAMERATE,
-			"-flush_packets", "0",
-			"-f", "mpegts",
-			"udp://" + LOCALHOST + ":" + strconv.Itoa(1234) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE + "&overrun_nonfatal=1",
-		}...)
 	}
+	args = append(args, []string{
+
+		"-y",
+		"-r", FFMPEG_STREAM_FRAMERATE,
+		"-flush_packets", "0",
+		"-f", "mpegts",
+		"udp://" + LOCALHOST + ":" + strconv.Itoa(1234) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE + "&overrun_nonfatal=1",
+	}...)
 
 	fmt.Printf("%v", args)
 
@@ -245,10 +236,16 @@ func (s *Streamer) startTranscoderProcess(murl string, crf string, watermarkPos 
 	args := []string{
 		"-re",
 		"-i", murl,
+	}
 
-		"-i", WATERMARK_IMG_URL,
-		"-filter_complex", watermarkPos,
+	if _, err := os.Stat(WATERMARK_IMG_URL); watermarkPos != "" && err == nil {
+		args = append(args, []string{
+			"-i", WATERMARK_IMG_URL,
+			"-filter_complex", watermarkPos,
+		}...)
+	}
 
+	args = append(args, []string{
 		"-c:v", FFMPEG_VIDEO_CODEC,
 		"-pix_fmt", FFMPEG_VIDEO_PIXEL_FORMAT,
 		"-b:v", vBitrate,
@@ -268,7 +265,7 @@ func (s *Streamer) startTranscoderProcess(murl string, crf string, watermarkPos 
 		"-flush_packets", "0",
 		"-f", "mpegts",
 		"udp://" + LOCALHOST + ":" + strconv.Itoa(RELAYINPORT) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE + "&overrun_nonfatal=1",
-	}
+	}...)
 
 	go func() {
 
@@ -366,7 +363,7 @@ func (s *Streamer) initRelayServer() error {
 
 		dst, err := net.ResolveUDPAddr("udp", LOCALHOST+":"+strconv.Itoa(RELAYOUTPORT))
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("udp sender init resolved failed : %s", err)
 			return
 		}
 
@@ -424,7 +421,7 @@ func main() {
 	}
 
 	Streamer.startStreamerProcess()
-	Streamer.startTranscoderProcess("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4", FFMPEG_STREAM_CRF_LOW, WATERMARK_POSITION_BOTTOM_RIGHT, FFMPEG_VIDEO_BITRATE, FFMPEG_AUDIO_BITRATE, FFMPEG_STREAM_MAXBITRATE, FFMPEG_STREAM_BUFFERSIZE)
+	Streamer.startTranscoderProcess("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4", FFMPEG_STREAM_CRF_LOW, "", FFMPEG_VIDEO_BITRATE, FFMPEG_AUDIO_BITRATE, FFMPEG_STREAM_MAXBITRATE, FFMPEG_STREAM_BUFFERSIZE)
 	time.Sleep(50 * time.Second)
 	Streamer.stopTranscoderProcess()
 
