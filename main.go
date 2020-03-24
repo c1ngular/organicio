@@ -71,6 +71,7 @@ type Stream struct {
 type Streamer struct {
 	streams             map[string]*Stream
 	currentStreamingUID string
+	isStreamingNow      bool
 	transCtxCancel      context.CancelFunc
 	streamerCtxCancel   context.CancelFunc
 	relayConn           *net.UDPConn
@@ -213,12 +214,14 @@ func (s *Streamer) startStreamerProcess() {
 			fmt.Printf("streamer start failed ：%s \n", err)
 			return
 		}
+		s.isStreamingNow = true
+
 		fmt.Printf("\n streamer started successfully \n")
 		err = cmd.Wait()
 		if err != nil {
 			fmt.Printf("streamer wait error ： %s", err)
 		}
-
+		s.isStreamingNow = false
 		fmt.Printf("\n streamer stderr : %s \n", stderr)
 		fmt.Printf("\n streamer stdout : %s \n", stdout)
 		fmt.Printf("\n streamer terminated \n")
