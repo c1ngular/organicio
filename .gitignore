@@ -12,6 +12,7 @@
 *.flv
 mp3s
 ffmpeg
+*ffmpeg*
 .DS_Store
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out

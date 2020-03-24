@@ -351,6 +351,14 @@ func (s *Streamer) initRelayServer() error {
 				fmt.Printf("\n writing to buffer bytes: %d , total buffer size : %d \n", wbsize, s.dataBuf.Len())
 			}
 
+			select {
+			case <-inctx.Done():
+				fmt.Printf("\n udp reader terminated : %s \n", inctx.Err())
+				return
+			default:
+				continue
+			}
+
 		}
 	}(inctx)
 
@@ -359,7 +367,9 @@ func (s *Streamer) initRelayServer() error {
 		dst, err := net.ResolveUDPAddr("udp", LOCALHOST+":"+strconv.Itoa(RELAYOUTPORT))
 		if err != nil {
 			fmt.Println(err)
+			return
 		}
+
 		for {
 
 			outdata := make([]byte, PACKETSIZE)
@@ -385,6 +395,15 @@ func (s *Streamer) initRelayServer() error {
 			}
 
 			s.mux.Unlock()
+
+			select {
+			case <-outctx.Done():
+				fmt.Printf("\n udp sender terminated : %s \n", outctx.Err())
+				return
+			default:
+				continue
+			}
+
 		}
 
 	}(outctx)
@@ -405,7 +424,7 @@ func main() {
 	}
 
 	Streamer.startStreamerProcess()
-	Streamer.startTranscoderProcess("rtmp://58.200.131.2:1935/livetv/hunantv", FFMPEG_STREAM_CRF_LOW, WATERMARK_POSITION_BOTTOM_RIGHT, FFMPEG_VIDEO_BITRATE, FFMPEG_AUDIO_BITRATE, FFMPEG_STREAM_MAXBITRATE, FFMPEG_STREAM_BUFFERSIZE)
+	Streamer.startTranscoderProcess("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4", FFMPEG_STREAM_CRF_LOW, WATERMARK_POSITION_BOTTOM_RIGHT, FFMPEG_VIDEO_BITRATE, FFMPEG_AUDIO_BITRATE, FFMPEG_STREAM_MAXBITRATE, FFMPEG_STREAM_BUFFERSIZE)
 	time.Sleep(50 * time.Second)
 	Streamer.stopTranscoderProcess()
 
