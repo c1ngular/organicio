@@ -214,14 +214,22 @@ func (s *Streamer) startStreamerProcess() {
 			fmt.Printf("streamer start failed ：%s \n", err)
 			return
 		}
+
+		s.mux.Lock()
 		s.isStreamingNow = true
+		s.mux.Unlock()
 
 		fmt.Printf("\n streamer started successfully \n")
 		err = cmd.Wait()
 		if err != nil {
 			fmt.Printf("streamer wait error ： %s", err)
 		}
+
+		s.mux.Lock()
 		s.isStreamingNow = false
+		s.dataBuf.Reset()
+		s.mux.Unlock()
+
 		fmt.Printf("\n streamer stderr : %s \n", stderr)
 		fmt.Printf("\n streamer stdout : %s \n", stdout)
 		fmt.Printf("\n streamer terminated \n")
@@ -287,8 +295,9 @@ func (s *Streamer) startTranscoderProcess(murl string, crf string, watermarkPos 
 			fmt.Printf("\n transcoder start failed ：%s \n", err)
 			return
 		}
-
+		s.mux.Lock()
 		s.currentStreamingUID = murl
+		s.mux.Unlock()
 
 		fmt.Printf("\n transcoder started successfully \n")
 		err = cmd.Wait()
