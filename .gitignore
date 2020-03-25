@@ -10,6 +10,10 @@
 *.mp3
 *.mp4
 *.flv
+*.dylib
+MediaServer
+*.p12
+log
 mp3s
 ffmpeg
 *ffmpeg*
