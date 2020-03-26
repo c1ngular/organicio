@@ -244,7 +244,7 @@ func (s *MediaServer) RemoveStreamProxy(rurl string) bool {
 
 	content := string(contentjson)
 
-	success := gjson.Get(string(content), "data.flat").Bool()
+	success := gjson.Get(string(content), "data.flag").Bool()
 
 	if success {
 		s.mux.Lock()
