@@ -1,11 +1,17 @@
 package mediaserver
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +25,13 @@ const (
 	MEDIASERVER_BINARY_PATH            = "/Users/s1ngular/GoWork/src/github.com/organicio/mediaserver/MediaServer"
 	ON_STREAM_CHANGE_HANDLER_URL       = "/hook/on_stream_changed"
 	ON_MEDIASERVER_STARTED_HANDLER_URL = "/hook/on_server_started"
+	ON_STREAM_PLAY_HANDLER_URL         = "/hook/on_play"
+	ON_STREAM_PUBLISH_HANDLER_URL      = "/hook/on_publish"
+	ON_STREAM_NONE_READER_HANDLER_URL  = "/hook/on_stream_none_reader"
+	ON_STREAM_NOT_FOUND_HANDLER_URL    = "/hook/on_stream_not_found"
+	STREAM_PROXY_APPNAME               = "proxy"
+	STREAM_AUTH_URL_KEY                = "sec"
+	STREAM_AUTH_URL_PASSWORD           = "12359"
 )
 
 type Stream struct {
@@ -30,13 +43,19 @@ type Stream struct {
 }
 
 type MediaServer struct {
-	Streams map[string]*Stream
-	mux     sync.Mutex
+	Streams     map[string]*Stream
+	ProxyMap    map[string]string
+	EventServer *http.Server
+	mux         sync.Mutex
+}
+
+func NewMediaServer() *MediaServer {
+
+	return &MediaServer{Streams: make(map[string]*Stream), ProxyMap: make(map[string]string)}
 }
 
 func (s *MediaServer) StartMediaServerDaemon() error {
 
-	go s.StartEventServer()
 	os.Setenv("DYLD_LIBRARY_PATH", MEDIASERVER_DYLD_LIBRARY_PATH)
 	cmd := exec.Command(MEDIASERVER_BINARY_PATH, []string{"-d", "&"}...)
 	err := cmd.Start()
@@ -146,11 +165,118 @@ func (s *MediaServer) RemoveStream(st *Stream) {
 
 }
 
+func (s *MediaServer) AddStreamProxy(rurl string) bool {
+
+	var rtmp string = "0"
+	var rtsp string = "0"
+
+	rand.Seed(time.Now().UnixNano())
+	streamID := strconv.Itoa(rand.Intn(100))
+	u, err := url.Parse(rurl)
+	if strings.ToLower(u.Scheme) == "rtmp" {
+		rtmp = "1"
+	}
+	if strings.ToLower(u.Scheme) == "rtsp" {
+		rtsp = "1"
+	}
+	if _, ok := s.ProxyMap[rurl]; ok {
+		fmt.Printf("\n add stream proxy failed: duplicate proxy url \n")
+		return false
+	}
+
+	res, err := http.Get(RESTFUL_URL + "addStreamProxy?vhost=__defaultVhost__&app=" + STREAM_PROXY_APPNAME + "&stream=" + streamID + "&enable_rtsp=" + rtsp + "&enable_rtmp=" + rtmp + "&enable_hls=0&enable_mp4=0&url=" + rurl)
+	if err != nil {
+		return false
+	}
+
+	contentjson, err := ioutil.ReadAll(res.Body)
+
+	res.Body.Close()
+	if err != nil {
+		fmt.Printf("\n add stream proxy failed: %s \n", err)
+		return false
+	}
+
+	content := string(contentjson)
+
+	fmt.Print(content)
+
+	code := gjson.Get(string(content), "code").Int()
+
+	if code == 0 {
+
+		s.mux.Lock()
+		s.ProxyMap[rurl] = gjson.Get(content, "data.key").String()
+		s.mux.Unlock()
+
+		return true
+	}
+
+	return false
+
+}
+
+func (s *MediaServer) RemoveStreamProxy(rurl string) bool {
+
+	proxykey := ""
+
+	s.mux.Lock()
+	for k, v := range s.ProxyMap {
+
+		if k == rurl {
+			proxykey = v
+		}
+	}
+	s.mux.Unlock()
+
+	res, err := http.Get(RESTFUL_URL + "delStreamProxy?key=" + proxykey)
+	if err != nil {
+		return false
+	}
+
+	contentjson, err := ioutil.ReadAll(res.Body)
+
+	res.Body.Close()
+	if err != nil {
+		fmt.Printf("\n delete stream proxy failed: %s \n", err)
+		return false
+	}
+
+	content := string(contentjson)
+
+	success := gjson.Get(string(content), "data.flat").Bool()
+
+	if success {
+		s.mux.Lock()
+		delete(s.ProxyMap, rurl)
+		s.mux.Unlock()
+	}
+
+	return success
+
+}
+
 func (s *MediaServer) StartEventServer() {
 
-	http.HandleFunc(ON_STREAM_CHANGE_HANDLER_URL, s.OnStreamChanged)
-	http.HandleFunc(ON_MEDIASERVER_STARTED_HANDLER_URL, s.OnServerStarted)
-	http.ListenAndServe(":"+HTTP_PORT, nil)
+	go func() {
+
+		http.HandleFunc(ON_STREAM_CHANGE_HANDLER_URL, s.OnStreamChanged)
+		http.HandleFunc(ON_MEDIASERVER_STARTED_HANDLER_URL, s.OnServerStarted)
+		http.HandleFunc(ON_STREAM_PLAY_HANDLER_URL, s.OnPlay)
+		http.HandleFunc(ON_STREAM_PUBLISH_HANDLER_URL, s.OnPublish)
+		http.HandleFunc(ON_STREAM_NONE_READER_HANDLER_URL, s.OnStreamNoneReader)
+		http.HandleFunc(ON_STREAM_NOT_FOUND_HANDLER_URL, s.OnStreamNotFound)
+
+		s.EventServer = &http.Server{
+			Addr:    ":" + HTTP_PORT,
+			Handler: http.DefaultServeMux,
+		}
+		log.Fatal(s.EventServer.ListenAndServe())
+	}()
+}
+
+func (s *MediaServer) StopEventServer() {
+	s.EventServer.Close()
 }
 
 func (s *MediaServer) OnStreamChanged(w http.ResponseWriter, req *http.Request) {
@@ -174,7 +300,6 @@ func (s *MediaServer) OnStreamChanged(w http.ResponseWriter, req *http.Request) 
 	}
 
 	stream.UID = stream.Schema + ":" + "//127.0.0.1/" + stream.AppName + "/" + stream.StreamId
-
 	register := gjson.Get(content, "regist").Bool()
 	if register {
 		s.AddStream(stream)
@@ -188,14 +313,147 @@ func (s *MediaServer) OnServerStarted(w http.ResponseWriter, req *http.Request) 
 
 	fmt.Print("\n media server has started  \n")
 	req.Body.Close()
-	time.Sleep(5 * time.Second)
+
 	send, changed, code := s.SetServerConfigItems(map[string]string{
 		"general.enableVhost":        "0",
 		"general.publishToRtxp":      "0",
 		"general.publishToHls":       "0",
 		"general.publishToMP4":       "0",
+		"general.addMuteAudio":       "0",
 		"hook.enable":                "1",
-		"hook.on_stream_none_reader": " ",
+		"hook.on_play":               "http://127.0.0.1:" + HTTP_PORT + ON_STREAM_PLAY_HANDLER_URL,
+		"hook.on_publish":            "http://127.0.0.1:" + HTTP_PORT + ON_STREAM_PUBLISH_HANDLER_URL,
+		"hook.on_stream_changed":     "http://127.0.0.1:" + HTTP_PORT + ON_STREAM_CHANGE_HANDLER_URL,
+		"hook.on_stream_none_reader": "http://127.0.0.1:" + HTTP_PORT + ON_STREAM_NONE_READER_HANDLER_URL,
+		"hook.on_stream_not_found":   "http://127.0.0.1:" + HTTP_PORT + ON_STREAM_NOT_FOUND_HANDLER_URL,
+		"hook.on_server_started":     "http://127.0.0.1:" + HTTP_PORT + ON_MEDIASERVER_STARTED_HANDLER_URL,
+		"hook.on_rtsp_realm":         "",
+		"hook.on_rtsp_auth":          "",
 	})
 	fmt.Printf("send:%d , changed: %d, code: %d", send, changed, code)
+
+	s.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc")
+	time.Sleep(5 * time.Second)
+	s.RemoveStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc")
+}
+
+func (s *MediaServer) OnPlay(w http.ResponseWriter, req *http.Request) {
+
+	contentjson, err := ioutil.ReadAll(req.Body)
+	req.Body.Close()
+
+	content := string(contentjson)
+
+	if err != nil {
+		return
+	}
+
+	response := struct {
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
+	}{
+		-1,
+		"failed",
+	}
+
+	m, err := url.ParseQuery(gjson.Get(content, "params").String())
+
+	if err != nil {
+		fmt.Print(err)
+		return
+	}
+
+	if v, ok := m[STREAM_AUTH_URL_KEY]; ok && strings.Join(v, "") == STREAM_AUTH_URL_PASSWORD {
+		response.Code = 0
+		response.Msg = "success"
+		jsonString, err := json.Marshal(response)
+		if err != nil {
+			fmt.Printf("json encode failed : %s", err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Write(jsonString)
+	}
+
+}
+
+func (s *MediaServer) OnPublish(w http.ResponseWriter, req *http.Request) {
+
+	contentjson, err := ioutil.ReadAll(req.Body)
+	req.Body.Close()
+
+	content := string(contentjson)
+
+	if err != nil {
+		return
+	}
+
+	response := struct {
+		Code       int    `json:"code"`
+		EnableHls  bool   `json:"enableHls"`
+		EnableMP4  bool   `json:"enableMP4"`
+		EnableRtxp bool   `json:"enableRtxp"`
+		Msg        string `json:"msg"`
+	}{
+		-1,
+		false,
+		false,
+		false,
+		"failed",
+	}
+
+	m, err := url.ParseQuery(gjson.Get(content, "params").String())
+
+	if err != nil {
+		fmt.Print(err)
+		return
+	}
+
+	if v, ok := m[STREAM_AUTH_URL_KEY]; ok && strings.Join(v, "") == STREAM_AUTH_URL_PASSWORD {
+		response.Code = 0
+		response.Msg = "success"
+		jsonString, err := json.Marshal(response)
+		if err != nil {
+			fmt.Printf("json encode failed : %s", err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Write(jsonString)
+	}
+
+}
+
+func (s *MediaServer) OnStreamNoneReader(w http.ResponseWriter, req *http.Request) {
+
+	req.Body.Close()
+
+	response := struct {
+		Code  int  `json:"code"`
+		Close bool `json:"Close"`
+	}{
+		0,
+		true,
+	}
+
+	jsonString, err := json.Marshal(response)
+	if err != nil {
+		fmt.Printf("json encode failed : %s", err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Write(jsonString)
+
+}
+
+func (s *MediaServer) OnStreamNotFound(w http.ResponseWriter, req *http.Request) {
+
+	contentjson, err := ioutil.ReadAll(req.Body)
+	req.Body.Close()
+
+	if err != nil {
+		return
+	}
+
+	content := string(contentjson)
+	fmt.Print(content)
 }

@@ -71,6 +71,11 @@ type Streamer struct {
 	mux                 sync.Mutex
 }
 
+func NewSreamer() *Streamer {
+
+	return &Streamer{}
+}
+
 func (s *Streamer) MergeMp3s() {
 
 	var (
@@ -233,6 +238,8 @@ func (s *Streamer) StopStreamerProcess() {
 }
 
 func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos string, vBitrate string, aBitrate string, maxBitrate string, bufsize string) {
+
+	s.MergeMp3s()
 
 	args := []string{
 		"-re",
@@ -407,7 +414,6 @@ func (s *Streamer) InitRelayServer() error {
 
 	}(outctx)
 
-	fmt.Println("relay server running")
 	return err
 
 }

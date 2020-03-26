@@ -9,21 +9,22 @@ import (
 )
 
 func main() {
-	mserver := &mediaserver.MediaServer{Streams: make(map[string]*mediaserver.Stream)}
-	err := mserver.StartMediaServerDaemon()
+
+	var err error
+	mserver := mediaserver.NewMediaServer()
+
+	mserver.StartEventServer()
+
+	err = mserver.StartMediaServerDaemon()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Print(err)
 	}
 
-	Streamer := &streamer.Streamer{}
-	Streamer.MergeMp3s()
-
-	err = Streamer.InitRelayServer()
+	streamer := streamer.NewSreamer()
+	streamer.InitRelayServer()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Print(err)
 	}
 
-	time.Sleep(5 * time.Second)
-	fmt.Print(mserver.GetServerConfigItem("hook\\.on_stream_changed"))
-	time.Sleep(500 * time.Second)
+	time.Sleep(5000 * time.Second)
 }
