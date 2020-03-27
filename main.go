@@ -8,6 +8,13 @@ import (
 	"github.com/organicio/streamer"
 )
 
+var DEVICE_UID = ""
+var BUSINESS_UID = ""
+
+func ValidateDevice() {
+
+}
+
 func main() {
 
 	var err error

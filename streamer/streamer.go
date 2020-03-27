@@ -13,10 +13,10 @@ import (
 	"sync"
 )
 
-const (
-	STREAMER_UUID     = "sdfrweqrewqr0943rasdfds"
-	STREAMER_SECRET   = "FDQER345435435"
-	STREAMER_PUSH_URL = "/Users/s1ngular/GoWork/src/github.com/organicio/tesdtt.mp4"
+var (
+	REMOTE_STREAM_AUTH_URL_KEY      = "sec"
+	REMOTE_STREAM_AUTH_URL_PASSWORD = "12359"
+	STREAMER_PUSH_URL               = "/Users/s1ngular/GoWork/src/github.com/organicio/tesdtt.mp4"
 
 	WATERMARK_IMG_URL               = "/Users/s1ngular/GoWork/src/github.com/organicio/streamer/watermark.png"
 	WATERMARK_POSITION_BOTTOM_RIGHT = "overlay=main_w-overlay_w-10:main_h-overlay_h-10"

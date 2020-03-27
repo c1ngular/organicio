@@ -18,7 +18,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-const (
+var (
 	HTTP_PORT                          = "9900"
 	RESTFUL_URL                        = "http://127.0.0.1/index/api/"
 	MEDIASERVER_DYLD_LIBRARY_PATH      = "/Users/s1ngular/GoWork/src/github.com/organicio/mediaserver/"
@@ -30,8 +30,8 @@ const (
 	ON_STREAM_NONE_READER_HANDLER_URL  = "/hook/on_stream_none_reader"
 	ON_STREAM_NOT_FOUND_HANDLER_URL    = "/hook/on_stream_not_found"
 	STREAM_PROXY_APPNAME               = "proxy"
-	STREAM_AUTH_URL_KEY                = "sec"
-	STREAM_AUTH_URL_PASSWORD           = "12359"
+	LOCAL_STREAM_AUTH_URL_KEY          = "sec"
+	LOCAL_STREAM_AUTH_URL_PASSWORD     = "12359"
 )
 
 type Stream struct {
@@ -229,8 +229,14 @@ func (s *MediaServer) RemoveStreamProxy(rurl string) bool {
 	}
 	s.mux.Unlock()
 
+	if proxykey == "" {
+		fmt.Printf("\n delete stream not found \n")
+		return false
+	}
+
 	res, err := http.Get(RESTFUL_URL + "delStreamProxy?key=" + proxykey)
 	if err != nil {
+		fmt.Printf("\n delete stream proxy failed: %s \n", err)
 		return false
 	}
 
@@ -332,9 +338,11 @@ func (s *MediaServer) OnServerStarted(w http.ResponseWriter, req *http.Request) 
 	})
 	fmt.Printf("send:%d , changed: %d, code: %d", send, changed, code)
 
-	s.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc")
+	fmt.Print(s.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
 	time.Sleep(5 * time.Second)
-	s.RemoveStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc")
+	fmt.Print(s.RemoveStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
+	time.Sleep(5 * time.Second)
+	fmt.Print(s.RemoveStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
 }
 
 func (s *MediaServer) OnPlay(w http.ResponseWriter, req *http.Request) {
@@ -363,7 +371,7 @@ func (s *MediaServer) OnPlay(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if v, ok := m[STREAM_AUTH_URL_KEY]; ok && strings.Join(v, "") == STREAM_AUTH_URL_PASSWORD {
+	if v, ok := m[LOCAL_STREAM_AUTH_URL_KEY]; ok && strings.Join(v, "") == LOCAL_STREAM_AUTH_URL_PASSWORD {
 		response.Code = 0
 		response.Msg = "success"
 		jsonString, err := json.Marshal(response)
@@ -409,7 +417,7 @@ func (s *MediaServer) OnPublish(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if v, ok := m[STREAM_AUTH_URL_KEY]; ok && strings.Join(v, "") == STREAM_AUTH_URL_PASSWORD {
+	if v, ok := m[LOCAL_STREAM_AUTH_URL_KEY]; ok && strings.Join(v, "") == LOCAL_STREAM_AUTH_URL_PASSWORD {
 		response.Code = 0
 		response.Msg = "success"
 		jsonString, err := json.Marshal(response)
@@ -429,7 +437,7 @@ func (s *MediaServer) OnStreamNoneReader(w http.ResponseWriter, req *http.Reques
 
 	response := struct {
 		Code  int  `json:"code"`
-		Close bool `json:"Close"`
+		Close bool `json:"close"`
 	}{
 		0,
 		true,
