@@ -6,29 +6,34 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 )
 
 var (
 	REMOTE_STREAM_AUTH_URL_KEY      = "sec"
 	REMOTE_STREAM_AUTH_URL_PASSWORD = "12359"
-	STREAMER_PUSH_URL               = "/Users/s1ngular/GoWork/src/github.com/organicio/tesdtt.mp4"
+	STREAMER_PUSH_URL               = ""
 
-	WATERMARK_IMG_URL               = "/Users/s1ngular/GoWork/src/github.com/organicio/streamer/watermark.png"
+	WATERMARK_ENABLED               = false
+	WATERMARK_IMG_URL               = ""
 	WATERMARK_POSITION_BOTTOM_RIGHT = "overlay=main_w-overlay_w-10:main_h-overlay_h-10"
 	WATERMARK_POSITION_BOTTOM_LEFT  = "overlay=10:main_h-overlay_h-10"
 	WATERMARK_POSITION_TOP_RIGHT    = "overlay=main_w-overlay_w-10:10"
 	WATERMARK_POSITION_TOP_LEFT     = "overlay=10:10"
+	WATERMARK_POSITION              = WATERMARK_POSITION_BOTTOM_RIGHT
 
-	MP3S_FOLDER_PATH    = "/Users/s1ngular/GoWork/src/github.com/organicio/mp3s/"
+	MP3S_FOLDER_PATH    = ""
 	MP3_LIST_FILENAME   = "mp3s.txt"
 	MP3_MERGED_FILENAME = "merged.mp3"
+	MP3_BG_ENABLED      = false
 
-	FFMPEG_EXECUTABLE_PATH       = "/Users/s1ngular/GoWork/src/github.com/organicio/streamer/ffmpeg"
+	FFMPEG_EXECUTABLE_PATH       = ""
 	FFMPEG_TRANSOCDER_BUFFERSIZE = "65535"
 	FFMPEG_STREAMER_BUFFERSIZE   = "10000000"
 	FFMPEG_STREAMER_FIFO_SIZE    = "100000"
@@ -151,7 +156,7 @@ func (s *Streamer) StartStreamerProcess() {
 		"udp://" + LOCALHOST + ":" + strconv.Itoa(RELAYOUTPORT) + "?buffer_size=" + FFMPEG_STREAMER_BUFFERSIZE + "&fifo_size=" + FFMPEG_STREAMER_FIFO_SIZE + "&overrun_nonfatal=1",
 	}
 
-	if _, err := os.Stat(MP3S_FOLDER_PATH + MP3_MERGED_FILENAME); err == nil {
+	if _, err := os.Stat(MP3S_FOLDER_PATH + MP3_MERGED_FILENAME); MP3_BG_ENABLED == true && err == nil {
 		args = append(args, []string{
 			"-stream_loop", "-1",
 			"-i", MP3S_FOLDER_PATH + MP3_MERGED_FILENAME,
@@ -171,7 +176,7 @@ func (s *Streamer) StartStreamerProcess() {
 		"-strict", "experimental",
 	}...)
 
-	if _, err := os.Stat(MP3S_FOLDER_PATH + MP3_MERGED_FILENAME); err == nil {
+	if _, err := os.Stat(MP3S_FOLDER_PATH + MP3_MERGED_FILENAME); MP3_BG_ENABLED == true && err == nil {
 
 		args = append(args, []string{
 			"-map",
@@ -181,13 +186,29 @@ func (s *Streamer) StartStreamerProcess() {
 		}...)
 
 	}
+
+	u, err := url.Parse(STREAMER_PUSH_URL)
+	if err != nil {
+		fmt.Printf("parsing remote streaming url faild: %s \n", err)
+		return
+	}
+
+	var outformat = ""
+	if strings.ToLower(u.Scheme) == "rtmp" {
+		outformat = "flv"
+	}
+	if strings.ToLower(u.Scheme) == "rtsp" {
+		outformat = "rtsp"
+	}
+
 	args = append(args, []string{
 
 		"-y",
 		"-r", FFMPEG_STREAM_FRAMERATE,
-		"-flush_packets", "0",
-		"-f", "mpegts",
-		"udp://" + LOCALHOST + ":" + strconv.Itoa(1234) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE + "&overrun_nonfatal=1",
+		//"-flush_packets", "0",
+		"-f", outformat,
+		//"udp://" + LOCALHOST + ":" + strconv.Itoa(1234) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE + "&overrun_nonfatal=1",
+		STREAMER_PUSH_URL + "?" + REMOTE_STREAM_AUTH_URL_KEY + "=" + REMOTE_STREAM_AUTH_URL_PASSWORD,
 	}...)
 
 	fmt.Printf("%v", args)
@@ -246,7 +267,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		"-i", murl,
 	}
 
-	if _, err := os.Stat(WATERMARK_IMG_URL); watermarkPos != "" && err == nil {
+	if _, err := os.Stat(WATERMARK_IMG_URL); watermarkPos != "" && WATERMARK_ENABLED == true && err == nil {
 		args = append(args, []string{
 			"-i", WATERMARK_IMG_URL,
 			"-filter_complex", watermarkPos,
@@ -341,20 +362,20 @@ func (s *Streamer) InitRelayServer() error {
 		for {
 
 			indata := make([]byte, PACKETSIZE)
-			insize, remoteAddr, err := s.relayConn.ReadFromUDP(indata)
+			insize, _, err := s.relayConn.ReadFromUDP(indata)
 			if err != nil {
 				fmt.Printf("error during read: %s", err)
 			}
 
 			if insize > 0 {
 
-				fmt.Printf("\n read incoming bytes: %s %d\n", remoteAddr, insize)
+				//fmt.Printf("\n read incoming bytes: %s %d\n", remoteAddr, insize)
 
 				s.mux.Lock()
-				wbsize, _ := s.dataBuf.Write(indata)
+				_, _ = s.dataBuf.Write(indata)
 				s.mux.Unlock()
 
-				fmt.Printf("\n writing to buffer bytes: %d , total buffer size : %d \n", wbsize, s.dataBuf.Len())
+				//fmt.Printf("\n writing to buffer bytes: %d , total buffer size : %d \n", wbsize, s.dataBuf.Len())
 			}
 
 			select {
@@ -384,16 +405,16 @@ func (s *Streamer) InitRelayServer() error {
 
 			if s.dataBuf.Len() > 0 {
 
-				rbufsize, err := s.dataBuf.Read(outdata)
+				_, err := s.dataBuf.Read(outdata)
 				if err != nil {
 					fmt.Println(err)
 				}
 
-				fmt.Printf("\n reading buffer bytes: %d\n", rbufsize)
+				//fmt.Printf("\n reading buffer bytes: %d\n", rbufsize)
 
-				outsize, err := s.relayConn.WriteTo(outdata, dst)
+				_, err = s.relayConn.WriteTo(outdata, dst)
 
-				fmt.Printf("\n sending out bytes: %d\n", outsize)
+				//fmt.Printf("\n sending out bytes: %d\n", outsize)
 
 				if err != nil {
 					fmt.Println(err)

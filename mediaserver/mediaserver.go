@@ -21,8 +21,8 @@ import (
 var (
 	HTTP_PORT                          = "9900"
 	RESTFUL_URL                        = "http://127.0.0.1/index/api/"
-	MEDIASERVER_DYLD_LIBRARY_PATH      = "/Users/s1ngular/GoWork/src/github.com/organicio/mediaserver/"
-	MEDIASERVER_BINARY_PATH            = "/Users/s1ngular/GoWork/src/github.com/organicio/mediaserver/MediaServer"
+	MEDIASERVER_DYLD_LIBRARY_PATH      = ""
+	MEDIASERVER_BINARY_PATH            = ""
 	ON_STREAM_CHANGE_HANDLER_URL       = "/hook/on_stream_changed"
 	ON_MEDIASERVER_STARTED_HANDLER_URL = "/hook/on_server_started"
 	ON_STREAM_PLAY_HANDLER_URL         = "/hook/on_play"
@@ -173,6 +173,11 @@ func (s *MediaServer) AddStreamProxy(rurl string) bool {
 	rand.Seed(time.Now().UnixNano())
 	streamID := strconv.Itoa(rand.Intn(100))
 	u, err := url.Parse(rurl)
+	if err != nil {
+		fmt.Printf("\n parsing url err : %s \n", err)
+		return false
+	}
+
 	if strings.ToLower(u.Scheme) == "rtmp" {
 		rtmp = "1"
 	}
@@ -192,6 +197,7 @@ func (s *MediaServer) AddStreamProxy(rurl string) bool {
 	contentjson, err := ioutil.ReadAll(res.Body)
 
 	res.Body.Close()
+
 	if err != nil {
 		fmt.Printf("\n add stream proxy failed: %s \n", err)
 		return false
@@ -339,10 +345,7 @@ func (s *MediaServer) OnServerStarted(w http.ResponseWriter, req *http.Request) 
 	fmt.Printf("send:%d , changed: %d, code: %d", send, changed, code)
 
 	fmt.Print(s.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
-	time.Sleep(5 * time.Second)
-	fmt.Print(s.RemoveStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
-	time.Sleep(5 * time.Second)
-	fmt.Print(s.RemoveStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
+
 }
 
 func (s *MediaServer) OnPlay(w http.ResponseWriter, req *http.Request) {
@@ -427,6 +430,7 @@ func (s *MediaServer) OnPublish(w http.ResponseWriter, req *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Write(jsonString)
+
 	}
 
 }
@@ -440,7 +444,7 @@ func (s *MediaServer) OnStreamNoneReader(w http.ResponseWriter, req *http.Reques
 		Close bool `json:"close"`
 	}{
 		0,
-		true,
+		false,
 	}
 
 	jsonString, err := json.Marshal(response)
