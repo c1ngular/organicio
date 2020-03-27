@@ -112,12 +112,13 @@ func main() {
 		fmt.Print(err)
 	}
 
+	<-mserver.ServerStarted
+
 	mstreamer := streamer.NewSreamer()
 	mstreamer.InitRelayServer()
 	if err != nil {
 		fmt.Print(err)
 	}
-	time.Sleep(5 * time.Second)
 
 	mstreamer.StartTranscoderProcess("rtmp://127.0.0.1/live/mobile", streamer.FFMPEG_STREAM_CRF_LOW, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
 	mstreamer.StartStreamerProcess()

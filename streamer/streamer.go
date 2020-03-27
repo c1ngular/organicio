@@ -246,8 +246,8 @@ func (s *Streamer) StartStreamerProcess() {
 		s.dataBuf.Reset()
 		s.mux.Unlock()
 
-		fmt.Printf("\n streamer stderr : %s \n", stderr)
-		fmt.Printf("\n streamer stdout : %s \n", stdout)
+		fmt.Printf("\n streamer stderr : %s \n", stderr.String())
+		fmt.Printf("\n streamer stdout : %s \n", stdout.String())
 		fmt.Printf("\n streamer terminated \n")
 
 	}()
@@ -327,8 +327,8 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		s.dataBuf.Reset()
 		s.mux.Unlock()
 
-		fmt.Printf("\n transcoder stderr : %s \n", stderr)
-		fmt.Printf("\n transcoder stdout : %s \n", stdout)
+		fmt.Printf("\n transcoder stderr : %s \n", stderr.String())
+		fmt.Printf("\n transcoder stdout : %s \n", stdout.String())
 		fmt.Printf("\n transcoder terminated \n")
 
 	}()
@@ -393,7 +393,7 @@ func (s *Streamer) InitRelayServer() error {
 
 		dst, err := net.ResolveUDPAddr("udp", LOCALHOST+":"+strconv.Itoa(RELAYOUTPORT))
 		if err != nil {
-			fmt.Println("udp sender init resolved failed : %s", err)
+			fmt.Printf("udp sender init resolved failed : %s", err)
 			return
 		}
 
@@ -439,26 +439,8 @@ func (s *Streamer) InitRelayServer() error {
 
 }
 
-/*func main() {
-
-	Streamer := &Streamer{streams: make(map[string]*Stream)}
-	Streamer.mergeMp3s()
-
-	err := Streamer.initRelayServer()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	Streamer.startStreamerProcess()
-	Streamer.startTranscoderProcess("/Users/s1ngular/GoWork/src/github.com/organicio/bbb.mp4", FFMPEG_STREAM_CRF_LOW, "", FFMPEG_VIDEO_BITRATE, FFMPEG_AUDIO_BITRATE, FFMPEG_STREAM_MAXBITRATE, FFMPEG_STREAM_BUFFERSIZE)
-	time.Sleep(50 * time.Second)
-	Streamer.stopTranscoderProcess()
-
-	Streamer.startTranscoderProcess("rtmp://202.69.69.180:443/webcast/bshdlive-pc", FFMPEG_STREAM_CRF_HIGH, WATERMARK_POSITION_TOP_LEFT, FFMPEG_VIDEO_BITRATE, FFMPEG_AUDIO_BITRATE, FFMPEG_STREAM_MAXBITRATE, FFMPEG_STREAM_BUFFERSIZE)
-	time.Sleep(50 * time.Second)
-	Streamer.stopTranscoderProcess()
-	Streamer.stopStreamerProcess()
-
-	time.Sleep(5 * time.Second)
-
-}*/
+func (s *Streamer) StopRelayServer() {
+	s.outCtxCancel()
+	s.inCtxCancel()
+	s.relayConn.Close()
+}

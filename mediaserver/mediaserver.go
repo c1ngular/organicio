@@ -43,15 +43,16 @@ type Stream struct {
 }
 
 type MediaServer struct {
-	Streams     map[string]*Stream
-	ProxyMap    map[string]string
-	EventServer *http.Server
-	mux         sync.Mutex
+	Streams       map[string]*Stream
+	ProxyMap      map[string]string
+	EventServer   *http.Server
+	mux           sync.Mutex
+	ServerStarted chan bool
 }
 
 func NewMediaServer() *MediaServer {
 
-	return &MediaServer{Streams: make(map[string]*Stream), ProxyMap: make(map[string]string)}
+	return &MediaServer{Streams: make(map[string]*Stream), ProxyMap: make(map[string]string), ServerStarted: make(chan bool)}
 }
 
 func (s *MediaServer) StartMediaServerDaemon() error {
@@ -323,6 +324,7 @@ func (s *MediaServer) OnStreamChanged(w http.ResponseWriter, req *http.Request) 
 
 func (s *MediaServer) OnServerStarted(w http.ResponseWriter, req *http.Request) {
 
+	s.ServerStarted <- true
 	fmt.Print("\n media server has started  \n")
 	req.Body.Close()
 
