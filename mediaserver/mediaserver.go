@@ -346,8 +346,6 @@ func (s *MediaServer) OnServerStarted(w http.ResponseWriter, req *http.Request) 
 	})
 	fmt.Printf("send:%d , changed: %d, code: %d", send, changed, code)
 
-	fmt.Print(s.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
-
 }
 
 func (s *MediaServer) OnPlay(w http.ResponseWriter, req *http.Request) {

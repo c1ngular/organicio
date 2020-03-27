@@ -113,6 +113,7 @@ func main() {
 	}
 
 	<-mserver.ServerStarted
+	fmt.Print(mserver.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
 
 	mstreamer := streamer.NewSreamer()
 	mstreamer.InitRelayServer()
