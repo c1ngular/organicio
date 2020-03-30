@@ -31,6 +31,7 @@ func loadConfig(configfilename string) {
 	watermarkPosition := results.Get("watermark_position").String()
 	mp3BgEnabled := results.Get("mp3_bg_enabled").Bool()
 	mp3FolderPath := results.Get("mp3_folder_path").String()
+	mp3Volume := results.Get("mp3_bg_volume").String()
 	ffmpegPath := results.Get("ffmpeg_binary_path").String()
 	stream_push_url := results.Get("stream_push_url").String()
 	mediaServerLibPath := results.Get("media_server_lib_path").String()
@@ -72,6 +73,7 @@ func loadConfig(configfilename string) {
 	if _, err := os.Stat(mp3FolderPath); err == nil {
 		streamer.MP3_BG_ENABLED = mp3BgEnabled
 		streamer.MP3S_FOLDER_PATH = mp3FolderPath
+		streamer.FFMPEG_MP3_BGSOUND_VOLUME = mp3Volume
 	}
 
 	if _, err := os.Stat(ffmpegPath); err != nil {
@@ -124,4 +126,5 @@ func main() {
 	mstreamer.StartTranscoderProcess("rtmp://127.0.0.1/live/mobile", streamer.FFMPEG_STREAM_CRF_LOW, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
 	mstreamer.StartStreamerProcess()
 	time.Sleep(500 * time.Second)
+	mstreamer.StartStreamerProcess()
 }

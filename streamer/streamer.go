@@ -193,23 +193,31 @@ func (s *Streamer) StartStreamerProcess() {
 		return
 	}
 
-	var outformat = ""
 	if strings.ToLower(u.Scheme) == "rtmp" {
-		outformat = "flv"
+		args = append(args, []string{
+
+			"-y",
+			"-r", FFMPEG_STREAM_FRAMERATE,
+			//"-flush_packets", "0",
+			"-f", "flv",
+			//"udp://" + LOCALHOST + ":" + strconv.Itoa(1234) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE + "&overrun_nonfatal=1",
+			STREAMER_PUSH_URL + "?" + REMOTE_STREAM_AUTH_URL_KEY + "=" + REMOTE_STREAM_AUTH_URL_PASSWORD,
+		}...)
 	}
 	if strings.ToLower(u.Scheme) == "rtsp" {
-		outformat = "rtsp"
+
+		args = append(args, []string{
+
+			"-y",
+			"-r", FFMPEG_STREAM_FRAMERATE,
+			//"-flush_packets", "0",
+			"-f", "rtsp",
+			"-rtsp_transport",
+			"tcp",
+			//"udp://" + LOCALHOST + ":" + strconv.Itoa(1234) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE + "&overrun_nonfatal=1",
+			STREAMER_PUSH_URL + "?" + REMOTE_STREAM_AUTH_URL_KEY + "=" + REMOTE_STREAM_AUTH_URL_PASSWORD,
+		}...)
 	}
-
-	args = append(args, []string{
-
-		"-y",
-		"-r", FFMPEG_STREAM_FRAMERATE,
-		//"-flush_packets", "0",
-		"-f", outformat,
-		//"udp://" + LOCALHOST + ":" + strconv.Itoa(1234) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE + "&overrun_nonfatal=1",
-		STREAMER_PUSH_URL + "?" + REMOTE_STREAM_AUTH_URL_KEY + "=" + REMOTE_STREAM_AUTH_URL_PASSWORD,
-	}...)
 
 	fmt.Printf("%v", args)
 
