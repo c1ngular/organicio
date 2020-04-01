@@ -151,7 +151,7 @@ func (s *Streamer) MergeMp3s() {
 func (s *Streamer) StartStreamerProcess() {
 
 	args := []string{
-		"-re",
+		//"-re",
 		"-i",
 		"udp://" + LOCALHOST + ":" + strconv.Itoa(RELAYOUTPORT) + "?buffer_size=" + FFMPEG_STREAMER_BUFFERSIZE + "&fifo_size=" + FFMPEG_STREAMER_FIFO_SIZE + "&overrun_nonfatal=1",
 	}
@@ -271,7 +271,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 	s.MergeMp3s()
 
 	args := []string{
-		"-re",
+		//"-re",
 		"-i", murl,
 	}
 
