@@ -65,8 +65,8 @@ var (
 )
 
 type Streamer struct {
-	currentStreamingUID string
-	isStreamingNow      bool
+	CurrentStreamingUID string
+	IsStreamingNow      bool
 	transCtxCancel      context.CancelFunc
 	streamerCtxCancel   context.CancelFunc
 	relayConn           *net.UDPConn
@@ -76,7 +76,7 @@ type Streamer struct {
 	mux                 sync.Mutex
 }
 
-func NewSreamer() *Streamer {
+func NewStreamer() *Streamer {
 
 	return &Streamer{}
 }
@@ -151,7 +151,7 @@ func (s *Streamer) MergeMp3s() {
 func (s *Streamer) StartStreamerProcess() {
 
 	args := []string{
-		//"-re",
+		"-re",
 		"-i",
 		"udp://" + LOCALHOST + ":" + strconv.Itoa(RELAYOUTPORT) + "?buffer_size=" + FFMPEG_STREAMER_BUFFERSIZE + "&fifo_size=" + FFMPEG_STREAMER_FIFO_SIZE + "&overrun_nonfatal=1",
 	}
@@ -240,7 +240,7 @@ func (s *Streamer) StartStreamerProcess() {
 		}
 
 		s.mux.Lock()
-		s.isStreamingNow = true
+		s.IsStreamingNow = true
 		s.mux.Unlock()
 
 		fmt.Printf("\n streamer started successfully \n")
@@ -250,7 +250,7 @@ func (s *Streamer) StartStreamerProcess() {
 		}
 
 		s.mux.Lock()
-		s.isStreamingNow = false
+		s.IsStreamingNow = false
 		s.dataBuf.Reset()
 		s.mux.Unlock()
 
@@ -271,7 +271,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 	s.MergeMp3s()
 
 	args := []string{
-		//"-re",
+		"-re",
 		"-i", murl,
 	}
 
@@ -286,11 +286,12 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		"-c:v", FFMPEG_VIDEO_CODEC,
 		"-pix_fmt", FFMPEG_VIDEO_PIXEL_FORMAT,
 		"-b:v", vBitrate,
-		"-c:a", FFMPEG_AUDIO_CODEC,
+		/*"-c:a", FFMPEG_AUDIO_CODEC,
 		"-b:a", aBitrate,
 		"-sample_fmt", FFMPEG_AUDIO_SAMPLE_FORMAT,
 		"-ar", FFMPEG_AUDIO_SAMPLERATE,
-		"-ac", FFMPEG_AUDIO_CHANNELS,
+		"-ac", FFMPEG_AUDIO_CHANNELS,*/
+		"-c:a", "copy",
 
 		"-crf", crf,
 		"-threads", "2",
@@ -303,6 +304,8 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		"-f", "mpegts",
 		"udp://" + LOCALHOST + ":" + strconv.Itoa(RELAYINPORT) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE + "&overrun_nonfatal=1",
 	}...)
+
+	fmt.Printf("%v", args)
 
 	go func() {
 
@@ -322,7 +325,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 			return
 		}
 		s.mux.Lock()
-		s.currentStreamingUID = murl
+		s.CurrentStreamingUID = murl
 		s.mux.Unlock()
 
 		fmt.Printf("\n transcoder started successfully \n")
@@ -331,7 +334,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 			fmt.Printf("\n transcoder wait error ： %s", err)
 		}
 		s.mux.Lock()
-		s.currentStreamingUID = ""
+		s.CurrentStreamingUID = ""
 		s.dataBuf.Reset()
 		s.mux.Unlock()
 

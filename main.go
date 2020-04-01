@@ -13,6 +13,9 @@ import (
 
 var DEVICE_UID = ""
 var BUSINESS_UID = ""
+var mserver = mediaserver.NewMediaServer()
+var mstreamer = streamer.NewStreamer()
+var tickerRotate *time.Ticker
 
 func loadConfig(configfilename string) {
 
@@ -105,8 +108,6 @@ func main() {
 	loadConfig("./config.cfg")
 
 	var err error
-	mserver := mediaserver.NewMediaServer()
-
 	mserver.StartEventServer()
 
 	err = mserver.StartMediaServerDaemon()
@@ -115,16 +116,71 @@ func main() {
 	}
 
 	<-mserver.ServerStarted
-	fmt.Print(mserver.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
 
-	mstreamer := streamer.NewSreamer()
+	//fmt.Print(mserver.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
+	//fmt.Print(mserver.AddStreamProxy("rtmp://58.200.131.2:1935/livetv/hunantv"))
+
 	mstreamer.InitRelayServer()
 	if err != nil {
 		fmt.Print(err)
 	}
 
-	mstreamer.StartTranscoderProcess("rtmp://127.0.0.1/live/mobile", streamer.FFMPEG_STREAM_CRF_LOW, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
-	mstreamer.StartStreamerProcess()
+	if mstreamer.IsStreamingNow != true {
+		mstreamer.StartStreamerProcess()
+	}
+
+	startRotateStreaming()
+
 	time.Sleep(500 * time.Second)
-	mstreamer.StartStreamerProcess()
+}
+
+func getNextStreamingUrl() string {
+
+	url := ""
+
+	for k, _ := range mserver.Streams {
+
+		if k != mstreamer.CurrentStreamingUID && k != streamer.STREAMER_PUSH_URL {
+			url = k
+			break
+		}
+
+	}
+
+	return url
+}
+
+func startRotateStreaming() {
+
+	if mstreamer.CurrentStreamingUID != "" {
+		mstreamer.StopTranscoderProcess()
+	}
+
+	if url := getNextStreamingUrl(); url != "" {
+		mstreamer.StartTranscoderProcess(url, streamer.FFMPEG_STREAM_CRF_LOW, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
+	}
+
+	go func() {
+
+		tickerRotate = time.NewTicker(30 * time.Second)
+
+		for range tickerRotate.C {
+
+			nextUrl := getNextStreamingUrl()
+			fmt.Printf("ticker time up : %s", nextUrl)
+			if nextUrl != "" {
+				if mstreamer.CurrentStreamingUID != "" {
+					mstreamer.StopTranscoderProcess()
+				}
+				time.Sleep(1 * time.Second)
+				mstreamer.StartTranscoderProcess(nextUrl, streamer.FFMPEG_STREAM_CRF_LOW, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
+			} else {
+				fmt.Printf("failed to get Next rotating stream ")
+			}
+		}
+	}()
+}
+
+func stopRoateStreaming() {
+	tickerRotate.Stop()
 }
