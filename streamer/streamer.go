@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 var (
@@ -265,10 +264,18 @@ func (s *Streamer) StartStreamerProcess() {
 
 func (s *Streamer) StopStreamerProcess() {
 	s.streamerCtxCancel()
-	time.Sleep(1 * time.Second)
 }
 
 func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos string, vBitrate string, aBitrate string, maxBitrate string, bufsize string) {
+
+	for {
+		s.mux.Lock()
+		if s.CurrentStreamingUID == "" {
+			s.mux.Unlock()
+			break
+		}
+		s.mux.Unlock()
+	}
 
 	s.MergeMp3s()
 
@@ -350,7 +357,6 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 func (s *Streamer) StopTranscoderProcess() {
 
 	s.transCtxCancel()
-	time.Sleep(1 * time.Second)
 }
 
 func (s *Streamer) InitRelayServer() error {

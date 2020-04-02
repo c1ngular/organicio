@@ -107,9 +107,9 @@ func main() {
 
 	loadConfig("./config.cfg")
 
-	var err error
 	mserver.StartEventServer()
 
+	var err error
 	err = mserver.StartMediaServerDaemon()
 	if err != nil {
 		fmt.Print(err)
@@ -117,7 +117,6 @@ func main() {
 
 	<-mserver.ServerStarted
 
-	//fmt.Print(mserver.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
 	fmt.Print(mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/h6f7wv"))
 	fmt.Print(mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/06qk26"))
 
@@ -132,7 +131,16 @@ func main() {
 
 	startRotateStreaming()
 
-	time.Sleep(600 * time.Second)
+	defer func() {
+		stopRoateStreaming()
+		mstreamer.StopStreamerProcess()
+		mstreamer.StopTranscoderProcess()
+		mstreamer.StopRelayServer()
+		mserver.StopMediaServer()
+		mserver.StopEventServer()
+	}()
+
+	time.Sleep(120 * time.Second)
 }
 
 func getNextStreamingUrl() string {
@@ -147,7 +155,7 @@ func getNextStreamingUrl() string {
 		}
 
 	}
-	fmt.Printf("current streaming url: %s , next url: %s", mstreamer.CurrentStreamingUID, url)
+	fmt.Printf("\n current streaming url: %s , next url: %s \n", mstreamer.CurrentStreamingUID, url)
 	return url
 }
 
@@ -168,14 +176,13 @@ func startRotateStreaming() {
 		for range tickerRotate.C {
 
 			nextUrl := getNextStreamingUrl()
-			fmt.Printf("ticker time up : %s", nextUrl)
 			if nextUrl != "" {
 				if mstreamer.CurrentStreamingUID != "" {
 					mstreamer.StopTranscoderProcess()
 				}
 				mstreamer.StartTranscoderProcess(nextUrl, streamer.FFMPEG_STREAM_CRF_LOW, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
 			} else {
-				fmt.Printf("failed to get Next rotating stream ")
+				fmt.Printf("\n failed to get Next rotating stream \n")
 			}
 		}
 	}()

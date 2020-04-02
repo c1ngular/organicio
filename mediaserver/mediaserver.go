@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/tidwall/gjson"
@@ -48,6 +49,7 @@ type MediaServer struct {
 	EventServer   *http.Server
 	mux           sync.Mutex
 	ServerStarted chan bool
+	ServerPid     int
 }
 
 func NewMediaServer() *MediaServer {
@@ -59,11 +61,13 @@ func (s *MediaServer) StartMediaServerDaemon() error {
 
 	os.Setenv("DYLD_LIBRARY_PATH", MEDIASERVER_DYLD_LIBRARY_PATH)
 	cmd := exec.Command(MEDIASERVER_BINARY_PATH, []string{"-d", "&"}...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	err := cmd.Start()
 	if err != nil {
 		fmt.Printf("media server daemon start failed ：%s \n", err)
 		return err
 	}
+	s.ServerPid = cmd.Process.Pid
 	return nil
 }
 
@@ -75,6 +79,10 @@ func (s *MediaServer) RestartMediaServer() error {
 		return err
 	}
 	return nil
+}
+
+func (s *MediaServer) StopMediaServer() {
+	syscall.Kill(-s.ServerPid, syscall.SIGKILL)
 }
 
 func (s *MediaServer) GetServerConfigItem(itemk string) string {
