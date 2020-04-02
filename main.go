@@ -117,8 +117,9 @@ func main() {
 
 	<-mserver.ServerStarted
 
-	fmt.Print(mserver.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
-	fmt.Print(mserver.AddStreamProxy("rtmp://58.200.131.2:1935/livetv/hunantv"))
+	//fmt.Print(mserver.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc"))
+	fmt.Print(mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/h6f7wv"))
+	fmt.Print(mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/06qk26"))
 
 	mstreamer.InitRelayServer()
 	if err != nil {
@@ -131,7 +132,7 @@ func main() {
 
 	startRotateStreaming()
 
-	time.Sleep(500 * time.Second)
+	time.Sleep(600 * time.Second)
 }
 
 func getNextStreamingUrl() string {
@@ -146,7 +147,7 @@ func getNextStreamingUrl() string {
 		}
 
 	}
-
+	fmt.Printf("current streaming url: %s , next url: %s", mstreamer.CurrentStreamingUID, url)
 	return url
 }
 
