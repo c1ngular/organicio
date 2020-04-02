@@ -136,18 +136,12 @@ func (s *MediaServer) SetServerConfigItems(items map[string]string) (send, chang
 
 func (s *MediaServer) AddStream(st *Stream) {
 
-	existed := false
 	s.mux.Lock()
-	for _, v := range s.Streams {
-		if v.UID == st.UID {
-			existed = true
-		}
-	}
-	if !existed {
-		s.Streams[st.UID] = st
-		fmt.Printf("\n addded stream: %s , stream total : %d\n", st.UID, len(s.Streams))
-	} else {
+
+	if _, ok := s.Streams[st.UID]; ok {
 		fmt.Printf("\n already existed stream: %s , stream total : %d\n", st.UID, len(s.Streams))
+	} else {
+		s.Streams[st.UID] = st
 	}
 
 	s.mux.Unlock()
@@ -156,12 +150,16 @@ func (s *MediaServer) AddStream(st *Stream) {
 func (s *MediaServer) RemoveStream(st *Stream) {
 
 	s.mux.Lock()
-	for _, v := range s.Streams {
-		if v.UID == st.UID {
-			delete(s.Streams, st.UID)
-			fmt.Printf("\n deleted stream: %s\n", st.UID)
-		}
+
+	if _, ok := s.Streams[st.UID]; ok {
+
+		delete(s.Streams, st.UID)
+		fmt.Printf("\n deleted stream: %s\n", st.UID)
+
+	} else {
+		fmt.Printf("\n found no stream: %s to delete \n", st.UID)
 	}
+
 	s.mux.Unlock()
 
 }
@@ -228,12 +226,11 @@ func (s *MediaServer) RemoveStreamProxy(rurl string) bool {
 	proxykey := ""
 
 	s.mux.Lock()
-	for k, v := range s.ProxyMap {
 
-		if k == rurl {
-			proxykey = v
-		}
+	if k, ok := s.ProxyMap[rurl]; ok {
+		proxykey = k
 	}
+
 	s.mux.Unlock()
 
 	if proxykey == "" {

@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -264,6 +265,7 @@ func (s *Streamer) StartStreamerProcess() {
 
 func (s *Streamer) StopStreamerProcess() {
 	s.streamerCtxCancel()
+	time.Sleep(1 * time.Second)
 }
 
 func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos string, vBitrate string, aBitrate string, maxBitrate string, bufsize string) {
@@ -286,12 +288,11 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		"-c:v", FFMPEG_VIDEO_CODEC,
 		"-pix_fmt", FFMPEG_VIDEO_PIXEL_FORMAT,
 		"-b:v", vBitrate,
-		/*"-c:a", FFMPEG_AUDIO_CODEC,
+		"-c:a", FFMPEG_AUDIO_CODEC,
 		"-b:a", aBitrate,
 		"-sample_fmt", FFMPEG_AUDIO_SAMPLE_FORMAT,
 		"-ar", FFMPEG_AUDIO_SAMPLERATE,
-		"-ac", FFMPEG_AUDIO_CHANNELS,*/
-		"-c:a", "copy",
+		"-ac", FFMPEG_AUDIO_CHANNELS,
 
 		"-crf", crf,
 		"-threads", "2",
@@ -349,6 +350,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 func (s *Streamer) StopTranscoderProcess() {
 
 	s.transCtxCancel()
+	time.Sleep(1 * time.Second)
 }
 
 func (s *Streamer) InitRelayServer() error {
