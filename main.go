@@ -16,6 +16,7 @@ var BUSINESS_UID = ""
 var mserver = mediaserver.NewMediaServer()
 var mstreamer = streamer.NewStreamer()
 var tickerRotate *time.Ticker
+var tickerStopSignal = make(chan bool)
 
 func loadConfig(configfilename string) {
 
@@ -117,77 +118,87 @@ func main() {
 
 	<-mserver.ServerStarted
 
-	fmt.Print(mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/h6f7wv"))
-	fmt.Print(mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/06qk26"))
+	mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/h6f7wv")
+	mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/06qk26")
 
 	mstreamer.InitRelayServer()
 	if err != nil {
 		fmt.Print(err)
 	}
 
-	if mstreamer.IsStreamingNow != true {
-		mstreamer.StartStreamerProcess()
-	}
-
+	mstreamer.StartStreamerProcess()
 	startRotateStreaming()
-
-	defer func() {
-		stopRoateStreaming()
-		mstreamer.StopStreamerProcess()
-		mstreamer.StopTranscoderProcess()
-		mstreamer.StopRelayServer()
-		mserver.StopMediaServer()
-		mserver.StopEventServer()
-	}()
-
 	time.Sleep(120 * time.Second)
+
+	stopRoateStreaming()
+	mserver.StopMediaServer()
+	mserver.StopEventServer()
+	mstreamer.StopTranscoderProcess()
+	mstreamer.StopRelayServer()
+	mstreamer.StopStreamerProcess()
+	time.Sleep(4 * time.Second)
 }
 
 func getNextStreamingUrl() string {
 
 	url := ""
 
+	mserver.Mux.Lock()
 	for k, _ := range mserver.Streams {
 
+		mstreamer.Mux.Lock()
 		if k != mstreamer.CurrentStreamingUID && k != streamer.STREAMER_PUSH_URL {
 			url = k
+			mstreamer.Mux.Unlock()
 			break
 		}
+		mstreamer.Mux.Unlock()
 
 	}
+	mserver.Mux.Unlock()
+
 	fmt.Printf("\n current streaming url: %s , next url: %s \n", mstreamer.CurrentStreamingUID, url)
 	return url
 }
 
 func startRotateStreaming() {
 
+	mstreamer.Mux.Lock()
 	if mstreamer.CurrentStreamingUID != "" {
 		mstreamer.StopTranscoderProcess()
 	}
+	mstreamer.Mux.Unlock()
 
 	if url := getNextStreamingUrl(); url != "" {
 		mstreamer.StartTranscoderProcess(url, streamer.FFMPEG_STREAM_CRF_LOW, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
 	}
 
+	tickerRotate = time.NewTicker(30 * time.Second)
+
 	go func() {
 
-		tickerRotate = time.NewTicker(30 * time.Second)
+		for {
+			select {
+			case <-tickerStopSignal:
+				return
+			case <-tickerRotate.C:
 
-		for range tickerRotate.C {
-
-			nextUrl := getNextStreamingUrl()
-			if nextUrl != "" {
-				if mstreamer.CurrentStreamingUID != "" {
-					mstreamer.StopTranscoderProcess()
+				nextUrl := getNextStreamingUrl()
+				if nextUrl != "" {
+					if mstreamer.CurrentStreamingUID != "" {
+						mstreamer.StopTranscoderProcess()
+					}
+					mstreamer.StartTranscoderProcess(nextUrl, streamer.FFMPEG_STREAM_CRF_LOW, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
+				} else {
+					fmt.Printf("\n failed to get Next rotating stream \n")
 				}
-				mstreamer.StartTranscoderProcess(nextUrl, streamer.FFMPEG_STREAM_CRF_LOW, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
-			} else {
-				fmt.Printf("\n failed to get Next rotating stream \n")
 			}
 		}
+
 	}()
 }
 
 func stopRoateStreaming() {
 	tickerRotate.Stop()
+	tickerStopSignal <- true
 }

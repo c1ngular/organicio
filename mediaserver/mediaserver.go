@@ -47,7 +47,7 @@ type MediaServer struct {
 	Streams       map[string]*Stream
 	ProxyMap      map[string]string
 	EventServer   *http.Server
-	mux           sync.Mutex
+	Mux           sync.Mutex
 	ServerStarted chan bool
 	ServerPid     int
 }
@@ -64,7 +64,7 @@ func (s *MediaServer) StartMediaServerDaemon() error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	err := cmd.Start()
 	if err != nil {
-		fmt.Printf("media server daemon start failed ：%s \n", err)
+		fmt.Printf("\n media server daemon start failed ：%s \n", err)
 		return err
 	}
 	s.ServerPid = cmd.Process.Pid
@@ -144,7 +144,7 @@ func (s *MediaServer) SetServerConfigItems(items map[string]string) (send, chang
 
 func (s *MediaServer) AddStream(st *Stream) {
 
-	s.mux.Lock()
+	s.Mux.Lock()
 
 	if _, ok := s.Streams[st.UID]; ok {
 		fmt.Printf("\n already existed stream: %s , stream total : %d\n", st.UID, len(s.Streams))
@@ -152,12 +152,12 @@ func (s *MediaServer) AddStream(st *Stream) {
 		s.Streams[st.UID] = st
 	}
 
-	s.mux.Unlock()
+	s.Mux.Unlock()
 }
 
 func (s *MediaServer) RemoveStream(st *Stream) {
 
-	s.mux.Lock()
+	s.Mux.Lock()
 
 	if _, ok := s.Streams[st.UID]; ok {
 
@@ -168,7 +168,7 @@ func (s *MediaServer) RemoveStream(st *Stream) {
 		fmt.Printf("\n found no stream: %s to delete \n", st.UID)
 	}
 
-	s.mux.Unlock()
+	s.Mux.Unlock()
 
 }
 
@@ -212,15 +212,15 @@ func (s *MediaServer) AddStreamProxy(rurl string) bool {
 
 	content := string(contentjson)
 
-	fmt.Print(content)
+	fmt.Printf("\n added proxy stream :%s\n", content)
 
 	code := gjson.Get(string(content), "code").Int()
 
 	if code == 0 {
 
-		s.mux.Lock()
+		s.Mux.Lock()
 		s.ProxyMap[rurl] = gjson.Get(content, "data.key").String()
-		s.mux.Unlock()
+		s.Mux.Unlock()
 
 		return true
 	}
@@ -233,13 +233,13 @@ func (s *MediaServer) RemoveStreamProxy(rurl string) bool {
 
 	proxykey := ""
 
-	s.mux.Lock()
+	s.Mux.Lock()
 
 	if k, ok := s.ProxyMap[rurl]; ok {
 		proxykey = k
 	}
 
-	s.mux.Unlock()
+	s.Mux.Unlock()
 
 	if proxykey == "" {
 		fmt.Printf("\n delete stream not found \n")
@@ -265,9 +265,9 @@ func (s *MediaServer) RemoveStreamProxy(rurl string) bool {
 	success := gjson.Get(string(content), "data.flag").Bool()
 
 	if success {
-		s.mux.Lock()
+		s.Mux.Lock()
 		delete(s.ProxyMap, rurl)
-		s.mux.Unlock()
+		s.Mux.Unlock()
 	}
 
 	return success
@@ -303,7 +303,7 @@ func (s *MediaServer) OnStreamChanged(w http.ResponseWriter, req *http.Request) 
 	req.Body.Close()
 
 	content := string(contentjson)
-	fmt.Println(content)
+	fmt.Printf("\n streamchanged: %s \n", content)
 
 	if err != nil {
 		return
@@ -349,7 +349,7 @@ func (s *MediaServer) OnServerStarted(w http.ResponseWriter, req *http.Request) 
 		"hook.on_rtsp_realm":         "",
 		"hook.on_rtsp_auth":          "",
 	})
-	fmt.Printf("send:%d , changed: %d, code: %d", send, changed, code)
+	fmt.Printf("\n send:%d , changed: %d, code: %d \n", send, changed, code)
 
 }
 
@@ -375,7 +375,7 @@ func (s *MediaServer) OnPlay(w http.ResponseWriter, req *http.Request) {
 	m, err := url.ParseQuery(gjson.Get(content, "params").String())
 
 	if err != nil {
-		fmt.Print(err)
+		fmt.Printf("\n onplay url parsing error : %s \n", err)
 		return
 	}
 
@@ -384,7 +384,7 @@ func (s *MediaServer) OnPlay(w http.ResponseWriter, req *http.Request) {
 		response.Msg = "success"
 		jsonString, err := json.Marshal(response)
 		if err != nil {
-			fmt.Printf("json encode failed : %s", err)
+			fmt.Printf("\n onplay json encode failed : %s \n", err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -421,7 +421,7 @@ func (s *MediaServer) OnPublish(w http.ResponseWriter, req *http.Request) {
 	m, err := url.ParseQuery(gjson.Get(content, "params").String())
 
 	if err != nil {
-		fmt.Print(err)
+		fmt.Printf("\n onpublish url parsing error : %s \n", err)
 		return
 	}
 
@@ -430,7 +430,7 @@ func (s *MediaServer) OnPublish(w http.ResponseWriter, req *http.Request) {
 		response.Msg = "success"
 		jsonString, err := json.Marshal(response)
 		if err != nil {
-			fmt.Printf("json encode failed : %s", err)
+			fmt.Printf("\n onpublish json encode failed : %s \n", err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -454,7 +454,7 @@ func (s *MediaServer) OnStreamNoneReader(w http.ResponseWriter, req *http.Reques
 
 	jsonString, err := json.Marshal(response)
 	if err != nil {
-		fmt.Printf("json encode failed : %s", err)
+		fmt.Printf("\n on stream none reader json encode failed : %s \n", err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -472,5 +472,5 @@ func (s *MediaServer) OnStreamNotFound(w http.ResponseWriter, req *http.Request)
 	}
 
 	content := string(contentjson)
-	fmt.Print(content)
+	fmt.Printf("\n onstream not found : %s \n", content)
 }

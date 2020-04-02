@@ -73,7 +73,7 @@ type Streamer struct {
 	dataBuf             bytes.Buffer
 	inCtxCancel         context.CancelFunc
 	outCtxCancel        context.CancelFunc
-	mux                 sync.Mutex
+	Mux                 sync.Mutex
 }
 
 func NewStreamer() *Streamer {
@@ -89,7 +89,7 @@ func (s *Streamer) MergeMp3s() {
 
 	mp3s, err := ioutil.ReadDir(MP3S_FOLDER_PATH)
 	if err != nil {
-		fmt.Printf("Error reading - %s\n", err)
+		fmt.Printf("\n Error reading mp3s: %s \n", err)
 		return
 	}
 
@@ -97,12 +97,12 @@ func (s *Streamer) MergeMp3s() {
 
 		ext := filepath.Ext(mp3.Name())
 		if ext != ".mp3" {
-			fmt.Printf("skipping %s, ext: '%s'\n", mp3.Name(), ext)
+			fmt.Printf("\n skipping %s, ext: '%s' \n", mp3.Name(), ext)
 			continue
 		}
 
 		if mp3.Name() == MP3_MERGED_FILENAME {
-			fmt.Printf("skipping %s, ext: '%s'\n", mp3.Name(), ext)
+			fmt.Printf("\n skipping %s, ext: '%s' \n", mp3.Name(), ext)
 			continue
 		}
 
@@ -121,7 +121,7 @@ func (s *Streamer) MergeMp3s() {
 
 		err := ioutil.WriteFile(MP3S_FOLDER_PATH+MP3_LIST_FILENAME, []byte(str), 0755)
 		if err != nil {
-			fmt.Printf("write mp3 list text file failed : %s", err)
+			fmt.Printf("\n write mp3 list text file failed : %s \n", err)
 			return
 		}
 
@@ -141,7 +141,7 @@ func (s *Streamer) MergeMp3s() {
 		}
 		fmt.Printf("\n mp3 merge stdOUT and stdError %s\n", stdoutStderr)
 
-		fmt.Println(str)
+		fmt.Printf("\n mp3 list file content: %s \n", str)
 
 	} else {
 		fmt.Print("\n skipping merge, mp3 files have not changed \n")
@@ -189,7 +189,7 @@ func (s *Streamer) StartStreamerProcess() {
 
 	u, err := url.Parse(STREAMER_PUSH_URL)
 	if err != nil {
-		fmt.Printf("parsing remote streaming url faild: %s \n", err)
+		fmt.Printf("\n parsing remote streaming url faild: %s \n", err)
 		return
 	}
 
@@ -219,7 +219,7 @@ func (s *Streamer) StartStreamerProcess() {
 		}...)
 	}
 
-	fmt.Printf("%v", args)
+	fmt.Printf("\n streamer commands:  %v \n", args)
 
 	go func() {
 
@@ -228,31 +228,33 @@ func (s *Streamer) StartStreamerProcess() {
 			stdout, stderr bytes.Buffer
 		)
 
+		s.Mux.Lock()
 		streamerCtx, s.streamerCtxCancel = context.WithCancel(context.Background())
+		s.Mux.Unlock()
 		cmd := exec.CommandContext(streamerCtx, FFMPEG_EXECUTABLE_PATH, args...)
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
 		err := cmd.Start()
 		if err != nil {
-			fmt.Printf("streamer start failed ：%s \n", err)
+			fmt.Printf("\n streamer start failed ：%s \n", err)
 			return
 		}
 
-		s.mux.Lock()
+		s.Mux.Lock()
 		s.IsStreamingNow = true
-		s.mux.Unlock()
+		s.Mux.Unlock()
 
 		fmt.Printf("\n streamer started successfully \n")
 		err = cmd.Wait()
 		if err != nil {
-			fmt.Printf("streamer wait error ： %s", err)
+			fmt.Printf("\n streamer wait error ： %s \n", err)
 		}
 
-		s.mux.Lock()
+		s.Mux.Lock()
 		s.IsStreamingNow = false
 		s.dataBuf.Reset()
-		s.mux.Unlock()
+		s.Mux.Unlock()
 
 		fmt.Printf("\n streamer stderr : %s \n", stderr.String())
 		fmt.Printf("\n streamer stdout : %s \n", stdout.String())
@@ -263,19 +265,21 @@ func (s *Streamer) StartStreamerProcess() {
 }
 
 func (s *Streamer) StopStreamerProcess() {
+	s.Mux.Lock()
 	s.streamerCtxCancel()
+	s.Mux.Unlock()
+
+	for {
+		s.Mux.Lock()
+		if !s.IsStreamingNow {
+			s.Mux.Unlock()
+			break
+		}
+		s.Mux.Unlock()
+	}
 }
 
 func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos string, vBitrate string, aBitrate string, maxBitrate string, bufsize string) {
-
-	for {
-		s.mux.Lock()
-		if s.CurrentStreamingUID == "" {
-			s.mux.Unlock()
-			break
-		}
-		s.mux.Unlock()
-	}
 
 	s.MergeMp3s()
 
@@ -307,13 +311,13 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		"-maxrate", maxBitrate,
 		"-bufsize", bufsize,
 		"-r", FFMPEG_STREAM_FRAMERATE,
-		"-pass", "1",
+		//"-pass", "1",
 		"-flush_packets", "0",
 		"-f", "mpegts",
 		"udp://" + LOCALHOST + ":" + strconv.Itoa(RELAYINPORT) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE + "&overrun_nonfatal=1",
 	}...)
 
-	fmt.Printf("%v", args)
+	fmt.Printf("\n transcoder commands : %v \n", args)
 
 	go func() {
 
@@ -322,7 +326,9 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 			stdout, stderr bytes.Buffer
 		)
 
+		s.Mux.Lock()
 		transCtx, s.transCtxCancel = context.WithCancel(context.Background())
+		s.Mux.Unlock()
 		cmd := exec.CommandContext(transCtx, FFMPEG_EXECUTABLE_PATH, args...)
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
@@ -332,19 +338,19 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 			fmt.Printf("\n transcoder start failed ：%s \n", err)
 			return
 		}
-		s.mux.Lock()
+		s.Mux.Lock()
 		s.CurrentStreamingUID = murl
-		s.mux.Unlock()
+		s.Mux.Unlock()
 
 		fmt.Printf("\n transcoder started successfully \n")
 		err = cmd.Wait()
 		if err != nil {
 			fmt.Printf("\n transcoder wait error ： %s", err)
 		}
-		s.mux.Lock()
+		s.Mux.Lock()
 		s.CurrentStreamingUID = ""
 		s.dataBuf.Reset()
-		s.mux.Unlock()
+		s.Mux.Unlock()
 
 		fmt.Printf("\n transcoder stderr : %s \n", stderr.String())
 		fmt.Printf("\n transcoder stdout : %s \n", stdout.String())
@@ -356,7 +362,19 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 
 func (s *Streamer) StopTranscoderProcess() {
 
+	s.Mux.Lock()
 	s.transCtxCancel()
+	s.Mux.Unlock()
+
+	for {
+		s.Mux.Lock()
+		if s.CurrentStreamingUID == "" {
+			s.Mux.Unlock()
+			break
+		}
+		s.Mux.Unlock()
+	}
+
 }
 
 func (s *Streamer) InitRelayServer() error {
@@ -364,7 +382,7 @@ func (s *Streamer) InitRelayServer() error {
 	var err error
 	s.relayConn, err = net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(LOCALHOST), Port: RELAYINPORT})
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("\n init relay server error : %s \n", err)
 		return err
 	}
 
@@ -383,16 +401,16 @@ func (s *Streamer) InitRelayServer() error {
 			indata := make([]byte, PACKETSIZE)
 			insize, _, err := s.relayConn.ReadFromUDP(indata)
 			if err != nil {
-				fmt.Printf("error during read: %s", err)
+				fmt.Printf("\n error during stream read: %s \n", err)
 			}
 
 			if insize > 0 {
 
-				//fmt.Printf("\n read incoming bytes: %s %d\n", remoteAddr, insize)
+				//fmt.Printf("\n read incoming bytes: %s %d \n", remoteAddr, insize)
 
-				s.mux.Lock()
+				s.Mux.Lock()
 				_, _ = s.dataBuf.Write(indata)
-				s.mux.Unlock()
+				s.Mux.Unlock()
 
 				//fmt.Printf("\n writing to buffer bytes: %d , total buffer size : %d \n", wbsize, s.dataBuf.Len())
 			}
@@ -412,7 +430,7 @@ func (s *Streamer) InitRelayServer() error {
 
 		dst, err := net.ResolveUDPAddr("udp", LOCALHOST+":"+strconv.Itoa(RELAYOUTPORT))
 		if err != nil {
-			fmt.Printf("udp sender init resolved failed : %s", err)
+			fmt.Printf("\n udp sender init resolved failed : %s \n", err)
 			return
 		}
 
@@ -420,13 +438,13 @@ func (s *Streamer) InitRelayServer() error {
 
 			outdata := make([]byte, PACKETSIZE)
 
-			s.mux.Lock()
+			s.Mux.Lock()
 
 			if s.dataBuf.Len() > 0 {
 
 				_, err := s.dataBuf.Read(outdata)
 				if err != nil {
-					fmt.Println(err)
+					fmt.Printf("\n reading buffer error : %s \n", err)
 				}
 
 				//fmt.Printf("\n reading buffer bytes: %d\n", rbufsize)
@@ -436,11 +454,11 @@ func (s *Streamer) InitRelayServer() error {
 				//fmt.Printf("\n sending out bytes: %d\n", outsize)
 
 				if err != nil {
-					fmt.Println(err)
+					fmt.Printf("\n write out error : %s \n", err)
 				}
 			}
 
-			s.mux.Unlock()
+			s.Mux.Unlock()
 
 			select {
 			case <-outctx.Done():
