@@ -125,7 +125,7 @@ func main() {
 	<-mserver.ServerStarted
 
 	mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/h6f7wv")
-	mserver.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc")
+	//mserver.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc")
 
 	mstreamer.InitRelayServer()
 	if err != nil {
@@ -150,7 +150,7 @@ func main() {
 func getNextStreamingUrl() string {
 
 	url := ""
-
+	fmt.Printf("\n getting next url ... \n")
 	mserver.Mux.Lock()
 	for k, _ := range mserver.Streams {
 
@@ -179,6 +179,9 @@ func startRotateStreaming() {
 
 	if url := getNextStreamingUrl(); url != "" {
 		mstreamer.StartTranscoderProcess(url, streamer.FFMPEG_STREAM_CRF_LOW, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
+
+	} else {
+		fmt.Printf("\n failed to get next streaming url \n")
 	}
 
 	tickerRotate = time.NewTicker(60 * time.Second)
