@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"time"
 
@@ -106,8 +109,13 @@ func loadConfig(configfilename string) {
 
 func main() {
 
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+	//runtime.SetBlockProfileRate(1)
+	//runtime.SetMutexProfileFraction(5)
 	loadConfig("./config.cfg")
-
+	mstreamer.MergeMp3s()
 	mserver.StartEventServer()
 
 	var err error
@@ -118,24 +126,25 @@ func main() {
 
 	<-mserver.ServerStarted
 
+	mstreamer.StartStreamerProcess()
+
 	mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/h6f7wv")
-	mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/06qk26")
+	mserver.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc")
 
 	mstreamer.InitRelayServer()
 	if err != nil {
 		fmt.Print(err)
 	}
 
-	mstreamer.StartStreamerProcess()
 	startRotateStreaming()
-	time.Sleep(120 * time.Second)
+	time.Sleep(360 * time.Second)
 
 	stopRoateStreaming()
+	mstreamer.StopStreamerProcess()
 	mserver.StopMediaServer()
 	mserver.StopEventServer()
 	mstreamer.StopTranscoderProcess()
 	mstreamer.StopRelayServer()
-	mstreamer.StopStreamerProcess()
 	time.Sleep(4 * time.Second)
 }
 
@@ -173,7 +182,7 @@ func startRotateStreaming() {
 		mstreamer.StartTranscoderProcess(url, streamer.FFMPEG_STREAM_CRF_LOW, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
 	}
 
-	tickerRotate = time.NewTicker(30 * time.Second)
+	tickerRotate = time.NewTicker(60 * time.Second)
 
 	go func() {
 
@@ -192,7 +201,10 @@ func startRotateStreaming() {
 				} else {
 					fmt.Printf("\n failed to get Next rotating stream \n")
 				}
+			default:
+				continue
 			}
+
 		}
 
 	}()

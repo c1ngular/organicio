@@ -281,8 +281,6 @@ func (s *Streamer) StopStreamerProcess() {
 
 func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos string, vBitrate string, aBitrate string, maxBitrate string, bufsize string) {
 
-	s.MergeMp3s()
-
 	args := []string{
 		"-re",
 		"-i", murl,
