@@ -212,7 +212,7 @@ func (s *MediaServer) AddStreamProxy(rurl string) bool {
 
 	content := string(contentjson)
 
-	fmt.Printf("\n added proxy stream :%s\n", content)
+	fmt.Printf("\n add proxy stream response:%s\n", content)
 
 	code := gjson.Get(string(content), "code").Int()
 

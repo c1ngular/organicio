@@ -400,18 +400,18 @@ func (s *Streamer) InitRelayServer() error {
 
 			indata := make([]byte, PACKETSIZE)
 
-			insize, remoteAddr, err := s.relayConn.ReadFromUDP(indata)
+			insize, _, err := s.relayConn.ReadFromUDP(indata)
 			if err != nil {
 				fmt.Printf("\n error during stream read: %s \n", err)
 			}
 
 			if insize > 0 {
 
-				fmt.Printf("\n read incoming bytes: %s %d \n", remoteAddr, insize)
+				//fmt.Printf("\n read incoming bytes: %s %d \n", remoteAddr, insize)
 
 				s.Mux.Lock()
-				wbsize, _ := s.dataBuf.Write(indata)
-				fmt.Printf("\n writing to buffer bytes: %d , total buffer size : %d \n", wbsize, s.dataBuf.Len())
+				_, _ = s.dataBuf.Write(indata)
+				//fmt.Printf("\n writing to buffer bytes: %d , total buffer size : %d \n", wbsize, s.dataBuf.Len())
 				s.Mux.Unlock()
 
 			}
@@ -443,16 +443,16 @@ func (s *Streamer) InitRelayServer() error {
 
 			if s.dataBuf.Len() > 0 {
 
-				rbufsize, err := s.dataBuf.Read(outdata)
+				_, err := s.dataBuf.Read(outdata)
 				if err != nil {
 					fmt.Printf("\n reading buffer error : %s \n", err)
 				}
 
-				fmt.Printf("\n reading buffer bytes: %d\n", rbufsize)
+				//fmt.Printf("\n reading buffer bytes: %d\n", rbufsize)
 
-				outsize, err := s.relayConn.WriteTo(outdata, dst)
+				_, err = s.relayConn.WriteTo(outdata, dst)
 
-				fmt.Printf("\n sending out bytes: %d\n", outsize)
+				//fmt.Printf("\n sending out bytes: %d\n", outsize)
 
 				if err != nil {
 					fmt.Printf("\n write out error : %s \n", err)
