@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"time"
@@ -109,24 +107,22 @@ func loadConfig(configfilename string) {
 
 func main() {
 
-	go func() {
+	/*go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
-	//runtime.SetBlockProfileRate(1)
-	//runtime.SetMutexProfileFraction(5)
+	runtime.SetBlockProfileRate(1)
+	runtime.SetMutexProfileFraction(5)*/
+
 	loadConfig("./config.cfg")
 	mstreamer.MergeMp3s()
 	mserver.StartEventServer()
 
-	var err error
-	err = mserver.StartMediaServerDaemon()
+	err := mserver.StartMediaServerDaemon()
 	if err != nil {
 		fmt.Print(err)
 	}
 
 	<-mserver.ServerStarted
-
-	mstreamer.StartStreamerProcess()
 
 	mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/h6f7wv")
 	mserver.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc")
@@ -136,7 +132,9 @@ func main() {
 		fmt.Print(err)
 	}
 
+	mstreamer.StartStreamerProcess()
 	startRotateStreaming()
+
 	time.Sleep(360 * time.Second)
 
 	stopRoateStreaming()
@@ -145,6 +143,7 @@ func main() {
 	mserver.StopEventServer()
 	mstreamer.StopTranscoderProcess()
 	mstreamer.StopRelayServer()
+
 	time.Sleep(4 * time.Second)
 }
 

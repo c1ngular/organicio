@@ -297,11 +297,13 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		"-c:v", FFMPEG_VIDEO_CODEC,
 		"-pix_fmt", FFMPEG_VIDEO_PIXEL_FORMAT,
 		"-b:v", vBitrate,
-		"-c:a", FFMPEG_AUDIO_CODEC,
+		/*"-c:a", FFMPEG_AUDIO_CODEC,
 		"-b:a", aBitrate,
 		"-sample_fmt", FFMPEG_AUDIO_SAMPLE_FORMAT,
 		"-ar", FFMPEG_AUDIO_SAMPLERATE,
-		"-ac", FFMPEG_AUDIO_CHANNELS,
+		"-ac", FFMPEG_AUDIO_CHANNELS,*/
+		"-c:a",
+		"copy",
 
 		"-crf", crf,
 		"-threads", "2",
@@ -397,6 +399,7 @@ func (s *Streamer) InitRelayServer() error {
 		for {
 
 			indata := make([]byte, PACKETSIZE)
+
 			insize, _, err := s.relayConn.ReadFromUDP(indata)
 			if err != nil {
 				fmt.Printf("\n error during stream read: %s \n", err)

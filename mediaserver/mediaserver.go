@@ -277,6 +277,10 @@ func (s *MediaServer) RemoveStreamProxy(rurl string) bool {
 func (s *MediaServer) StartEventServer() {
 
 	go func() {
+		s.EventServer = &http.Server{
+			Addr:    ":" + HTTP_PORT,
+			Handler: http.DefaultServeMux,
+		}
 
 		http.HandleFunc(ON_STREAM_CHANGE_HANDLER_URL, s.OnStreamChanged)
 		http.HandleFunc(ON_MEDIASERVER_STARTED_HANDLER_URL, s.OnServerStarted)
@@ -285,10 +289,6 @@ func (s *MediaServer) StartEventServer() {
 		http.HandleFunc(ON_STREAM_NONE_READER_HANDLER_URL, s.OnStreamNoneReader)
 		http.HandleFunc(ON_STREAM_NOT_FOUND_HANDLER_URL, s.OnStreamNotFound)
 
-		s.EventServer = &http.Server{
-			Addr:    ":" + HTTP_PORT,
-			Handler: http.DefaultServeMux,
-		}
 		log.Fatal(s.EventServer.ListenAndServe())
 	}()
 }
