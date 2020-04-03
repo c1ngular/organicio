@@ -124,8 +124,12 @@ func main() {
 
 	<-mserver.ServerStarted
 
-	mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/h6f7wv")
-	//mserver.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc")
+	if !mserver.AddStreamProxy("rtmp://hwzbout.yunshicloud.com/mj1170/h6f7wv") {
+		fmt.Print("\n rtmp://hwzbout.yunshicloud.com/mj1170/h6f7wv pulled failed \n")
+	}
+	if !mserver.AddStreamProxy("rtmp://202.69.69.180:443/webcast/bshdlive-pc") {
+		fmt.Print("\n rtmp://202.69.69.180:443/webcast/bshdlive-pc pulled failed \n")
+	}
 
 	mstreamer.InitRelayServer()
 	if err != nil {
