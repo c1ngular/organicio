@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/organicio/mediaserver"
@@ -107,11 +110,11 @@ func loadConfig(configfilename string) {
 
 func main() {
 
-	/*go func() {
+	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 	runtime.SetBlockProfileRate(1)
-	runtime.SetMutexProfileFraction(5)*/
+	//runtime.SetMutexProfileFraction(5)
 
 	loadConfig("./config.cfg")
 	mstreamer.MergeMp3s()

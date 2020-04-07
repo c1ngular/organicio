@@ -396,9 +396,9 @@ func (s *Streamer) InitRelayServer() error {
 
 	go func(inctx context.Context) {
 
-		for {
+		var indata = make([]byte, PACKETSIZE, PACKETSIZE)
 
-			indata := make([]byte, PACKETSIZE)
+		for {
 
 			insize, _, err := s.relayConn.ReadFromUDP(indata)
 			if err != nil {
@@ -435,9 +435,9 @@ func (s *Streamer) InitRelayServer() error {
 			return
 		}
 
-		for {
+		var outdata = make([]byte, PACKETSIZE, PACKETSIZE)
 
-			outdata := make([]byte, PACKETSIZE)
+		for {
 
 			s.Mux.Lock()
 
