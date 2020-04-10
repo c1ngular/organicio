@@ -290,7 +290,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		"-c:v", FFMPEG_VIDEO_CODEC,
 		"-pix_fmt", FFMPEG_VIDEO_PIXEL_FORMAT,
 		"-b:v", vBitrate,
-		"-g", FFMPEG_VIDEO_GOP, //gop smooth stream transition , but effect crf output bitrate control
+		//"-g", FFMPEG_VIDEO_GOP, //gop reduces black screen for certain stream , but effect crf output bitrate control , and slow stream transition?
 
 		/*"-c:a", FFMPEG_AUDIO_CODEC,
 		"-b:a", aBitrate,
@@ -306,6 +306,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		//"-strict", "experimental",
 		"-maxrate", maxBitrate,
 		"-bufsize", bufsize,
+		"-max_muxing_queue_size", "1024",
 		"-r", FFMPEG_STREAM_FRAMERATE,
 		//"-pass", "1",
 		"-flush_packets", "0",
