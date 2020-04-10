@@ -41,6 +41,7 @@ var (
 	FFMPEG_STREAM_MAXBITRATE = "1M"
 	FFMPEG_STREAM_BUFFERSIZE = "2M"
 	FFMPEG_STREAM_FRAMERATE  = "24"
+	FFMPEG_VIDEO_GOP         = "48" /*twice as frame rate , a key frame every 2 seconds*/
 
 	FFMPEG_STREAM_CRF_LOW    = "34"
 	FFMPEG_STREAM_CRF_MEDIUM = "28"
@@ -172,8 +173,8 @@ func (s *Streamer) StartStreamerProcess() {
 		"-sample_fmt", FFMPEG_AUDIO_SAMPLE_FORMAT,
 		"-ar", FFMPEG_AUDIO_SAMPLERATE,
 		"-ac", FFMPEG_AUDIO_CHANNELS,
-		"-threads", "2",
-		"-strict", "experimental",
+		//"-threads", "2",
+		//"-strict", "experimental",
 	}...)
 
 	if _, err := os.Stat(MP3S_FOLDER_PATH + MP3_MERGED_FILENAME); MP3_BG_ENABLED == true && err == nil {
@@ -221,31 +222,26 @@ func (s *Streamer) StartStreamerProcess() {
 
 	fmt.Printf("\n streamer commands:  %v \n", args)
 
+	var (
+		streamerCtx    context.Context
+		stdout, stderr bytes.Buffer
+	)
+
+	streamerCtx, s.streamerCtxCancel = context.WithCancel(context.Background())
+	cmd := exec.CommandContext(streamerCtx, FFMPEG_EXECUTABLE_PATH, args...)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Start()
+	if err != nil {
+		fmt.Printf("\n streamer start failed ：%s \n", err)
+		return
+	}
+	s.IsStreamingNow = true
+	fmt.Printf("\n streamer started successfully \n")
+
 	go func() {
 
-		var (
-			streamerCtx    context.Context
-			stdout, stderr bytes.Buffer
-		)
-
-		s.Mux.Lock()
-		streamerCtx, s.streamerCtxCancel = context.WithCancel(context.Background())
-		s.Mux.Unlock()
-		cmd := exec.CommandContext(streamerCtx, FFMPEG_EXECUTABLE_PATH, args...)
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-
-		err := cmd.Start()
-		if err != nil {
-			fmt.Printf("\n streamer start failed ：%s \n", err)
-			return
-		}
-
-		s.Mux.Lock()
-		s.IsStreamingNow = true
-		s.Mux.Unlock()
-
-		fmt.Printf("\n streamer started successfully \n")
 		err = cmd.Wait()
 		if err != nil {
 			fmt.Printf("\n streamer wait error ： %s \n", err)
@@ -265,10 +261,7 @@ func (s *Streamer) StartStreamerProcess() {
 }
 
 func (s *Streamer) StopStreamerProcess() {
-	s.Mux.Lock()
 	s.streamerCtxCancel()
-	s.Mux.Unlock()
-
 	for {
 		s.Mux.Lock()
 		if !s.IsStreamingNow {
@@ -297,17 +290,20 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		"-c:v", FFMPEG_VIDEO_CODEC,
 		"-pix_fmt", FFMPEG_VIDEO_PIXEL_FORMAT,
 		"-b:v", vBitrate,
+		"-g", FFMPEG_VIDEO_GOP, //gop smooth stream transition , but effect crf output bitrate control
+
 		/*"-c:a", FFMPEG_AUDIO_CODEC,
 		"-b:a", aBitrate,
 		"-sample_fmt", FFMPEG_AUDIO_SAMPLE_FORMAT,
 		"-ar", FFMPEG_AUDIO_SAMPLERATE,
 		"-ac", FFMPEG_AUDIO_CHANNELS,*/
+
 		"-c:a",
 		"copy",
 
 		"-crf", crf,
-		"-threads", "2",
-		"-strict", "experimental",
+		//"-threads", "2",
+		//"-strict", "experimental",
 		"-maxrate", maxBitrate,
 		"-bufsize", bufsize,
 		"-r", FFMPEG_STREAM_FRAMERATE,
@@ -319,30 +315,26 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 
 	fmt.Printf("\n transcoder commands : %v \n", args)
 
+	var (
+		transCtx       context.Context
+		stdout, stderr bytes.Buffer
+	)
+
+	transCtx, s.transCtxCancel = context.WithCancel(context.Background())
+	cmd := exec.CommandContext(transCtx, FFMPEG_EXECUTABLE_PATH, args...)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Start()
+	if err != nil {
+		fmt.Printf("\n transcoder start failed ：%s \n", err)
+		return
+	}
+	s.CurrentStreamingUID = murl
+
+	fmt.Printf("\n transcoder started successfully \n")
+
 	go func() {
-
-		var (
-			transCtx       context.Context
-			stdout, stderr bytes.Buffer
-		)
-
-		s.Mux.Lock()
-		transCtx, s.transCtxCancel = context.WithCancel(context.Background())
-		s.Mux.Unlock()
-		cmd := exec.CommandContext(transCtx, FFMPEG_EXECUTABLE_PATH, args...)
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-
-		err := cmd.Start()
-		if err != nil {
-			fmt.Printf("\n transcoder start failed ：%s \n", err)
-			return
-		}
-		s.Mux.Lock()
-		s.CurrentStreamingUID = murl
-		s.Mux.Unlock()
-
-		fmt.Printf("\n transcoder started successfully \n")
 		err = cmd.Wait()
 		if err != nil {
 			fmt.Printf("\n transcoder wait error ： %s", err)
@@ -362,9 +354,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 
 func (s *Streamer) StopTranscoderProcess() {
 
-	s.Mux.Lock()
 	s.transCtxCancel()
-	s.Mux.Unlock()
 
 	for {
 		s.Mux.Lock()
