@@ -254,7 +254,7 @@ func (s *Streamer) StartStreamerProcess() {
 
 		s.Mux.Lock()
 		s.IsStreamingNow = false
-		//s.dataBuf.Reset()
+		s.dataBuf.Reset()
 		s.streamerProcess = nil
 		s.Mux.Unlock()
 
