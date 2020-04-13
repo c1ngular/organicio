@@ -271,12 +271,10 @@ func (s *Streamer) StartStreamerProcess() {
 func (s *Streamer) StopStreamerProcess() {
 
 	s.Mux.Lock()
-	err := s.streamerProcess.Kill()
-	s.Mux.Unlock()
-
-	if err != nil {
-		fmt.Printf("streamer process error while killing : %s", err)
+	if s.streamerProcess != nil {
+		_ = s.streamerProcess.Kill()
 	}
+	s.Mux.Unlock()
 	<-s.streamerTerminated
 
 }
@@ -320,7 +318,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		//"-pass", "1",
 		"-flush_packets", "0",
 		"-f", "mpegts",
-		"udp://" + LOCALHOST + ":" + strconv.Itoa(RELAYINPORT) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE + "&overrun_nonfatal=1",
+		"udp://" + LOCALHOST + ":" + strconv.Itoa(RELAYINPORT) + "?pkt_size=" + strconv.Itoa(PACKETSIZE) + "&buffer_size=" + FFMPEG_TRANSOCDER_BUFFERSIZE,
 	}...)
 
 	fmt.Printf("\n transcoder commands : %v \n", args)
@@ -344,6 +342,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		s.Mux.Lock()
 		s.CurrentStreamingUID = murl
 		s.transProcess = cmd.Process
+		s.dataBuf.Reset()
 		s.Mux.Unlock()
 
 		fmt.Printf("\n transcoder started successfully \n")
@@ -354,7 +353,6 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		s.Mux.Lock()
 		s.CurrentStreamingUID = ""
 		s.transProcess = nil
-		s.dataBuf.Reset()
 		s.Mux.Unlock()
 		s.transcoderTerminated <- true
 
@@ -369,12 +367,10 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 func (s *Streamer) StopTranscoderProcess() {
 
 	s.Mux.Lock()
-	err := s.transProcess.Kill()
-	s.Mux.Unlock()
-
-	if err != nil {
-		fmt.Printf("error accured while killing transcoder , %s", err)
+	if s.transProcess != nil {
+		_ = s.transProcess.Kill()
 	}
+	s.Mux.Unlock()
 	<-s.transcoderTerminated
 }
 
