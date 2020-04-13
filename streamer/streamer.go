@@ -66,20 +66,22 @@ var (
 )
 
 type Streamer struct {
-	CurrentStreamingUID string
-	IsStreamingNow      bool
-	transCtxCancel      context.CancelFunc
-	streamerCtxCancel   context.CancelFunc
-	relayConn           *net.UDPConn
-	dataBuf             bytes.Buffer
-	inCtxCancel         context.CancelFunc
-	outCtxCancel        context.CancelFunc
-	Mux                 sync.Mutex
+	CurrentStreamingUID  string
+	IsStreamingNow       bool
+	transProcess         *os.Process
+	streamerProcess      *os.Process
+	transcoderTerminated chan bool
+	streamerTerminated   chan bool
+	relayConn            *net.UDPConn
+	dataBuf              bytes.Buffer
+	inCtxCancel          context.CancelFunc
+	outCtxCancel         context.CancelFunc
+	Mux                  sync.Mutex
 }
 
 func NewStreamer() *Streamer {
 
-	return &Streamer{}
+	return &Streamer{transcoderTerminated: make(chan bool), streamerTerminated: make(chan bool)}
 }
 
 func (s *Streamer) MergeMp3s() {
@@ -222,19 +224,16 @@ func (s *Streamer) StartStreamerProcess() {
 
 	fmt.Printf("\n streamer commands:  %v \n", args)
 
-
 	go func() {
 
 		var (
-			streamerCtx    context.Context
 			stdout, stderr bytes.Buffer
 		)
-	
-		streamerCtx, s.streamerCtxCancel = context.WithCancel(context.Background())
-		cmd := exec.CommandContext(streamerCtx, FFMPEG_EXECUTABLE_PATH, args...)
+
+		cmd := exec.Command(FFMPEG_EXECUTABLE_PATH, args...)
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
-	
+
 		err = cmd.Start()
 		if err != nil {
 			fmt.Printf("\n streamer start failed ：%s \n", err)
@@ -243,6 +242,7 @@ func (s *Streamer) StartStreamerProcess() {
 
 		s.Mux.Lock()
 		s.IsStreamingNow = true
+		s.streamerProcess = cmd.Process
 		s.Mux.Unlock()
 
 		fmt.Printf("\n streamer started successfully \n")
@@ -254,8 +254,11 @@ func (s *Streamer) StartStreamerProcess() {
 
 		s.Mux.Lock()
 		s.IsStreamingNow = false
-		s.dataBuf.Reset()
+		//s.dataBuf.Reset()
+		s.streamerProcess = nil
 		s.Mux.Unlock()
+
+		s.streamerTerminated <- true
 
 		fmt.Printf("\n streamer stderr : %s \n", stderr.String())
 		fmt.Printf("\n streamer stdout : %s \n", stdout.String())
@@ -267,16 +270,15 @@ func (s *Streamer) StartStreamerProcess() {
 
 func (s *Streamer) StopStreamerProcess() {
 
-	s.streamerCtxCancel()
+	s.Mux.Lock()
+	err := s.streamerProcess.Kill()
+	s.Mux.Unlock()
 
-	for {
-		s.Mux.Lock()
-		if !s.IsStreamingNow {
-			s.Mux.Unlock()
-			break
-		}
-		s.Mux.Unlock()
+	if err != nil {
+		fmt.Printf("streamer process error while killing : %s", err)
 	}
+	<-s.streamerTerminated
+
 }
 
 func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos string, vBitrate string, aBitrate string, maxBitrate string, bufsize string) {
@@ -313,7 +315,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		//"-strict", "experimental",
 		"-maxrate", maxBitrate,
 		"-bufsize", bufsize,
-		"-max_muxing_queue_size", "1024",
+		//"-max_muxing_queue_size", "1024",
 		"-r", FFMPEG_STREAM_FRAMERATE,
 		//"-pass", "1",
 		"-flush_packets", "0",
@@ -326,15 +328,13 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 	go func() {
 
 		var (
-			transCtx       context.Context
 			stdout, stderr bytes.Buffer
 		)
-	
-		transCtx, s.transCtxCancel = context.WithCancel(context.Background())
-		cmd := exec.CommandContext(transCtx, FFMPEG_EXECUTABLE_PATH, args...)
+
+		cmd := exec.Command(FFMPEG_EXECUTABLE_PATH, args...)
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
-	
+
 		err := cmd.Start()
 		if err != nil {
 			fmt.Printf("\n transcoder start failed ：%s \n", err)
@@ -343,6 +343,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 
 		s.Mux.Lock()
 		s.CurrentStreamingUID = murl
+		s.transProcess = cmd.Process
 		s.Mux.Unlock()
 
 		fmt.Printf("\n transcoder started successfully \n")
@@ -352,8 +353,10 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		}
 		s.Mux.Lock()
 		s.CurrentStreamingUID = ""
+		s.transProcess = nil
 		s.dataBuf.Reset()
 		s.Mux.Unlock()
+		s.transcoderTerminated <- true
 
 		fmt.Printf("\n transcoder stderr : %s \n", stderr.String())
 		fmt.Printf("\n transcoder stdout : %s \n", stdout.String())
@@ -365,17 +368,14 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 
 func (s *Streamer) StopTranscoderProcess() {
 
-	s.transCtxCancel()
+	s.Mux.Lock()
+	err := s.transProcess.Kill()
+	s.Mux.Unlock()
 
-	for {
-		s.Mux.Lock()
-		if s.CurrentStreamingUID == "" {
-			s.Mux.Unlock()
-			break
-		}
-		s.Mux.Unlock()
+	if err != nil {
+		fmt.Printf("error accured while killing transcoder , %s", err)
 	}
-
+	<-s.transcoderTerminated
 }
 
 func (s *Streamer) InitRelayServer() error {
