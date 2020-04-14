@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 )
 
 var (
@@ -272,7 +273,8 @@ func (s *Streamer) StopStreamerProcess() {
 
 	s.Mux.Lock()
 	if s.streamerProcess != nil {
-		_ = s.streamerProcess.Kill()
+		//_ = s.streamerProcess.Kill()
+		s.streamerProcess.Signal(syscall.SIGINT)
 	}
 	s.Mux.Unlock()
 	<-s.streamerTerminated
@@ -342,7 +344,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		s.Mux.Lock()
 		s.CurrentStreamingUID = murl
 		s.transProcess = cmd.Process
-		s.dataBuf.Reset()
+		//s.dataBuf.Reset()
 		s.Mux.Unlock()
 
 		fmt.Printf("\n transcoder started successfully \n")
@@ -368,7 +370,8 @@ func (s *Streamer) StopTranscoderProcess() {
 
 	s.Mux.Lock()
 	if s.transProcess != nil {
-		_ = s.transProcess.Kill()
+		//_ = s.transProcess.Kill()
+		s.transProcess.Signal(syscall.SIGINT)
 	}
 	s.Mux.Unlock()
 	<-s.transcoderTerminated
