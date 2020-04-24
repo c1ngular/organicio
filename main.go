@@ -3,13 +3,14 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"log"
 	"os"
 	"time"
 
 	"github.com/organicio/mediaserver"
+	"github.com/organicio/sensor"
 	"github.com/organicio/streamer"
 	"github.com/tidwall/gjson"
 )
@@ -18,6 +19,7 @@ var DEVICE_UID = ""
 var BUSINESS_UID = ""
 var mserver = mediaserver.NewMediaServer()
 var mstreamer = streamer.NewStreamer()
+var msensor = sensor.NewSensorServer()
 var tickerRotate *time.Ticker
 var tickerStopSignal = make(chan bool)
 
@@ -45,6 +47,7 @@ func loadConfig(configfilename string) {
 	mediaServerPath := results.Get("media_server_binary_path").String()
 	localAuthKey := results.Get("local_auth_key").String()
 	localAuthPass := results.Get("local_auth_pass").String()
+	burnSensorInfo := results.Get("burnSensorInfo").Bool()
 
 	if deviceuid == "" || businessuid == "" {
 		panic("\n emtpy device uid or business uid \n")
@@ -72,6 +75,8 @@ func loadConfig(configfilename string) {
 		case "bottom_left":
 			streamer.WATERMARK_POSITION = streamer.WATERMARK_POSITION_BOTTOM_LEFT
 		case "bottom_right":
+			streamer.WATERMARK_POSITION = streamer.WATERMARK_POSITION_BOTTOM_RIGHT
+		default:
 			streamer.WATERMARK_POSITION = streamer.WATERMARK_POSITION_BOTTOM_RIGHT
 		}
 
@@ -104,6 +109,7 @@ func loadConfig(configfilename string) {
 	}
 
 	mediaserver.MEDIASERVER_DYLD_LIBRARY_PATH = mediaServerLibPath
+	streamer.BURN_SENSOR_INFO_TO_VIDEO = burnSensorInfo
 
 }
 
@@ -118,6 +124,7 @@ func main() {
 	loadConfig("./config.cfg")
 	mstreamer.MergeMp3s()
 	mserver.StartEventServer()
+	msensor.StartSensorServer()
 
 	err := mserver.StartMediaServerDaemon()
 	if err != nil {
@@ -147,6 +154,7 @@ func main() {
 	mstreamer.StopStreamerProcess()
 	mserver.StopMediaServer()
 	mserver.StopEventServer()
+	msensor.StopSensorServer()
 	mstreamer.StopTranscoderProcess()
 	mstreamer.StopRelayServer()
 
