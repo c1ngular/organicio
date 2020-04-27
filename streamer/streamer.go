@@ -29,7 +29,7 @@ var (
 	WATERMARK_POSITION_TOP_LEFT     = "overlay=10:10"
 	WATERMARK_POSITION              = WATERMARK_POSITION_BOTTOM_RIGHT
 	SENSOR_INFO_TEXT_FILE           = "/Users/s1ngular/GoWork/src/github.com/organicio/sensor.txt"
-	SENSOR_INFO_FONT_FILE           = "/Users/s1ngular/GoWork/src/github.com/organicio/streamer/NotoSansSC-Light.otf"
+	SENSOR_INFO_FONT_FILE           = "/Users/s1ngular/GoWork/src/github.com/organicio/streamer/NotoSansSC-Regular.otf"
 	BURN_SENSOR_INFO_TO_VIDEO       = false
 
 	MP3S_FOLDER_PATH    = ""
@@ -294,7 +294,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 
 		args = append(args, []string{
 			"-i", WATERMARK_IMG_URL,
-			"-filter_complex", "[0:v]drawtext=fontfile=" + SENSOR_INFO_FONT_FILE + ":y=h-th-10:x=10:textfile=" + SENSOR_INFO_TEXT_FILE + ":reload=1:fontcolor=white:fontsize=14:shadowcolor=black:shadowx=2:shadowy=2:box=1:line_spacing=5:boxcolor=red@0[stext];[stext][1:v]" + watermarkPos + "[filtered]",
+			"-filter_complex", "[0:v]drawtext=fontfile=" + SENSOR_INFO_FONT_FILE + ":y=h-th-10:x=10:textfile=" + SENSOR_INFO_TEXT_FILE + ":reload=1:fontcolor=white:fontsize=14:shadowcolor=black:shadowx=3:shadowy=3:box=1:line_spacing=5:boxcolor=red@0[stext];[stext][1:v]" + watermarkPos + "[filtered]",
 			"-map", "[filtered]",
 			"-map", " 0:a",
 		}...)
@@ -310,7 +310,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 
 		args = append(args, []string{
 			"-i", WATERMARK_IMG_URL,
-			"-filter_complex", "drawtext=fontfile=" + SENSOR_INFO_FONT_FILE + ":y=h-th-10:x=10:textfile=" + SENSOR_INFO_TEXT_FILE + ":reload=1:fontcolor=white:fontsize=14:shadowcolor=black:shadowx=2:shadowy=2:box=1:line_spacing=5:boxcolor=red@0",
+			"-filter_complex", "drawtext=fontfile=" + SENSOR_INFO_FONT_FILE + ":y=h-th-10:x=10:textfile=" + SENSOR_INFO_TEXT_FILE + ":reload=1:fontcolor=white:fontsize=14:shadowcolor=black:shadowx=3:shadowy=3:box=1:line_spacing=5:boxcolor=red@0",
 		}...)
 
 	}
@@ -335,7 +335,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		//"-strict", "experimental",
 		"-maxrate", maxBitrate,
 		"-bufsize", bufsize,
-		//"-max_muxing_queue_size", "1024",
+		"-max_muxing_queue_size", "1024",
 		"-r", FFMPEG_STREAM_FRAMERATE,
 		//"-pass", "1",
 		"-flush_packets", "0",
