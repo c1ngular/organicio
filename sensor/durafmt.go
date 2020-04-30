@@ -11,7 +11,7 @@ import (
 
 var (
 	//units      = []string{"years", "weeks", "days", "hours", "minutes", "seconds", "milliseconds", "microseconds"}
-	units      = []string{"年", "周", "日", "时", "分", "秒", "微秒", "毫秒"}
+	units      = []string{"年", "周", "日", "时", "分", "秒", "毫秒", "微秒"}
 	unitsShort = []string{"y", "w", "d", "h", "m", "s", "ms", "µs"}
 )
 
@@ -103,14 +103,14 @@ func (d *Durafmt) String() string {
 
 	// Create a map of the converted duration time.
 	durationMap := map[string]int64{
-		"毫秒": microseconds,
-		"微秒": milliseconds,
-		"秒":      seconds,
-		"分":      minutes,
-		"时":        hours,
-		"日":         days,
-		"周":        weeks,
-		"年":        years,
+		"微秒": microseconds,
+		"毫秒": milliseconds,
+		"秒":  seconds,
+		"分":  minutes,
+		"时":  hours,
+		"日":  days,
+		"周":  weeks,
+		"年":  years,
 	}
 
 	// Construct duration string.
