@@ -310,7 +310,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 
 		args = append(args, []string{
 			"-i", WATERMARK_IMG_URL,
-			"-filter_complex", "drawtext=fontfile=" + SENSOR_INFO_FONT_FILE + ":y=h-th-10:x=10:textfile=" + SENSOR_INFO_TEXT_FILE + ":reload=1:fontcolor=white:fontsize=14:shadowcolor=black:shadowx=3:shadowy=3:box=1:line_spacing=5:boxcolor=red@0",
+			"-filter_complex", "drawtext=fontfile=" + SENSOR_INFO_FONT_FILE + ":y=h-th-10:x=10:textfile=" + SENSOR_INFO_TEXT_FILE + ":reload=1:fontcolor=white:fontsize=12:shadowcolor=black:shadowx=3:shadowy=3:box=1:line_spacing=5:boxcolor=red@0",
 		}...)
 
 	}
@@ -376,7 +376,6 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		s.CurrentStreamingUID = ""
 		s.transProcess = nil
 		s.Mux.Unlock()
-
 
 		fmt.Printf("\n transcoder stderr : %s \n", stderr.String())
 		fmt.Printf("\n transcoder stdout : %s \n", stdout.String())

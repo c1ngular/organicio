@@ -213,7 +213,7 @@ func startRotateStreaming() {
 					if mstreamer.CurrentStreamingUID != "" {
 						mstreamer.StopTranscoderProcess()
 					}
-					mstreamer.StartTranscoderProcess(nextUrl, streamer.FFMPEG_STREAM_CRF_LOW, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
+					mstreamer.StartTranscoderProcess(nextUrl, streamer.FFMPEG_STREAM_CRF_HIGH, streamer.WATERMARK_POSITION, streamer.FFMPEG_VIDEO_BITRATE, streamer.FFMPEG_AUDIO_BITRATE, streamer.FFMPEG_STREAM_MAXBITRATE, streamer.FFMPEG_STREAM_BUFFERSIZE)
 				} else {
 					fmt.Printf("\n failed to get Next rotating stream \n")
 				}

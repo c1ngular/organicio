@@ -6,18 +6,18 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
-	"os"
-	"path"
+
 	"github.com/organicio/streamer"
 )
 
 const (
 	HTTP_PORT = "9911"
 )
-
 
 var startTime time.Time
 
@@ -69,17 +69,17 @@ func (s *SensorServer) StopSensorServer() {
 
 func (s *SensorServer) UpdateSensorInfoFile(sensorInfo *Sensor) {
 
-	duration:= Parse(time.Since(startTime)).LimitFirstN(2)
+	duration := Parse(time.Since(startTime)).LimitFirstN(2)
 
 	strInfo := []string{
 		"温度：" + sensorInfo.temp + "℃" + " \t",
-		"湿度：" + sensorInfo.humidity + "\\%"+ " \t",
-		"风向：" + sensorInfo.wind+ " \t",
-		"风速：" + sensorInfo.speed + "m/s"+ " \t",
-		"位置：" + sensorInfo.gps+ " \t",
+		"湿度：" + sensorInfo.humidity + "\\%" + " \t",
+		"风向：" + sensorInfo.wind + " \t",
+		"风速：" + sensorInfo.speed + "m/s" + " \t",
+		"位置：" + sensorInfo.gps + " \t",
 	}
 
-	if err := WriteFileAtomic(streamer.SENSOR_INFO_TEXT_FILE, []byte("当地时间： %{localtime} \t 运行时长：" + duration.String() + "\n" + strings.Join(strInfo[:], "") + "\n" + strings.Join(strInfo[:], "")) , 0644); err != nil {
+	if err := WriteFileAtomic(streamer.SENSOR_INFO_TEXT_FILE, []byte("老君山野蓝莓谷"+"\n"+"当地时间： %{localtime} \t 运行时长："+duration.String()+"\n"+strings.Join(strInfo[:], "")+"\n"+strings.Join(strInfo[:], "")), 0644); err != nil {
 		fmt.Printf("updating sensor info error : %s", err)
 	}
 }
