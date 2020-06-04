@@ -294,7 +294,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 
 		args = append(args, []string{
 			"-i", WATERMARK_IMG_URL,
-			"-filter_complex", "[0:v]drawtext=fontfile=" + SENSOR_INFO_FONT_FILE + ":y=h-th-10:x=10:textfile=" + SENSOR_INFO_TEXT_FILE + ":reload=1:fontcolor=white:fontsize=14:shadowcolor=black:shadowx=3:shadowy=3:box=1:line_spacing=5:boxcolor=red@0[stext];[stext][1:v]" + watermarkPos + "[filtered]",
+			"-filter_complex", "[0:v]drawtext=fontfile=" + SENSOR_INFO_FONT_FILE + ":y=h-th-10:x=10:textfile=" + SENSOR_INFO_TEXT_FILE + ":reload=1:fontcolor=white:fontsize=10:shadowcolor=black:shadowx=3:shadowy=3:box=1:line_spacing=5:boxcolor=red@0[stext];[stext][1:v]" + watermarkPos + "[filtered]",
 			"-map", "[filtered]",
 			"-map", " 0:a",
 		}...)
@@ -310,7 +310,7 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 
 		args = append(args, []string{
 			"-i", WATERMARK_IMG_URL,
-			"-filter_complex", "drawtext=fontfile=" + SENSOR_INFO_FONT_FILE + ":y=h-th-10:x=10:textfile=" + SENSOR_INFO_TEXT_FILE + ":reload=1:fontcolor=white:fontsize=12:shadowcolor=black:shadowx=3:shadowy=3:box=1:line_spacing=5:boxcolor=red@0",
+			"-filter_complex", "drawtext=fontfile=" + SENSOR_INFO_FONT_FILE + ":y=h-th-10:x=10:textfile=" + SENSOR_INFO_TEXT_FILE + ":reload=1:fontcolor=white:fontsize=10:shadowcolor=black:shadowx=3:shadowy=3:box=1:line_spacing=5:boxcolor=red@0",
 		}...)
 
 	}

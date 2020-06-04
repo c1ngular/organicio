@@ -76,10 +76,9 @@ func (s *SensorServer) UpdateSensorInfoFile(sensorInfo *Sensor) {
 		"湿度：" + sensorInfo.humidity + "\\%" + " \t",
 		"风向：" + sensorInfo.wind + " \t",
 		"风速：" + sensorInfo.speed + "m/s" + " \t",
-		"位置：" + sensorInfo.gps + " \t",
 	}
 
-	if err := WriteFileAtomic(streamer.SENSOR_INFO_TEXT_FILE, []byte("【 老君山野蓝莓谷 】"+"当地时间： %{localtime} \t 运行时长："+duration.String()+"\n"+strings.Join(strInfo[:], "")+"\n"+strings.Join(strInfo[:], "")), 0644); err != nil {
+	if err := WriteFileAtomic(streamer.SENSOR_INFO_TEXT_FILE, []byte("[ 老君山野蓝莓谷 ]"+" \t GPS: "+sensorInfo.gps+" \t 当地时间： %{localtime} \t 运行时长："+duration.String()+"\n"+strings.Join(strInfo[:], "")), 0644); err != nil {
 		fmt.Printf("updating sensor info error : %s", err)
 	}
 }
