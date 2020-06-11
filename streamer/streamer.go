@@ -42,17 +42,18 @@ var (
 	FFMPEG_STREAMER_BUFFERSIZE   = "10000000"
 	FFMPEG_STREAMER_FIFO_SIZE    = "100000"
 
-	FFMPEG_STREAM_MAXBITRATE = "1M"
-	FFMPEG_STREAM_BUFFERSIZE = "2M"
+	FFMPEG_STREAM_MAXBITRATE = "500k"
+	FFMPEG_STREAM_BUFFERSIZE = "1000k"
 	FFMPEG_STREAM_FRAMERATE  = "24"
-	FFMPEG_VIDEO_GOP         = "48" /*twice as frame rate , a key frame every 2 seconds*/
+	FFMPEG_STREAM_PRESET     = "veryfast" // ultrafast,superfast, veryfast, faster, fast, medium, slow, slower, veryslow, placebo
+	FFMPEG_VIDEO_GOP         = "48"       /*twice as frame rate , a key frame every 2 seconds*/
 
 	FFMPEG_STREAM_CRF_LOW    = "34"
 	FFMPEG_STREAM_CRF_MEDIUM = "28"
 	FFMPEG_STREAM_CRF_HIGH   = "21"
 
 	FFMPEG_VIDEO_CODEC        = "libx264"
-	FFMPEG_VIDEO_BITRATE      = "900k"
+	FFMPEG_VIDEO_BITRATE      = "400k"
 	FFMPEG_VIDEO_PIXEL_FORMAT = "yuv420p"
 
 	FFMPEG_AUDIO_CODEC         = "aac"
@@ -319,8 +320,8 @@ func (s *Streamer) StartTranscoderProcess(murl string, crf string, watermarkPos 
 		"-c:v", FFMPEG_VIDEO_CODEC,
 		"-pix_fmt", FFMPEG_VIDEO_PIXEL_FORMAT,
 		"-b:v", vBitrate,
-		//"-g", FFMPEG_VIDEO_GOP, //gop reduces black screen for certain stream , but effect crf output bitrate control , and slow stream transition?
-
+		"-g", FFMPEG_VIDEO_GOP, //gop reduces black screen for certain stream , but effect crf output bitrate control , and slow stream transition?
+		"-preset", FFMPEG_STREAM_PRESET,
 		/*"-c:a", FFMPEG_AUDIO_CODEC,
 		"-b:a", aBitrate,
 		"-sample_fmt", FFMPEG_AUDIO_SAMPLE_FORMAT,

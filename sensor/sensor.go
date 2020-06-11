@@ -72,10 +72,10 @@ func (s *SensorServer) UpdateSensorInfoFile(sensorInfo *Sensor) {
 	duration := Parse(time.Since(startTime)).LimitFirstN(2)
 
 	strInfo := []string{
-		"温度：" + sensorInfo.temp + "℃" + " \t",
-		"湿度：" + sensorInfo.humidity + "\\%" + " \t",
-		"风向：" + sensorInfo.wind + " \t",
-		"风速：" + sensorInfo.speed + "m/s" + " \t",
+		"温度：" + sensorInfo.temp + "℃" + "\t ",
+		"湿度：" + sensorInfo.humidity + "\\%" + "\t ",
+		"风向：" + sensorInfo.wind + "\t ",
+		"风速：" + sensorInfo.speed + "m/s" + "\t ",
 	}
 
 	if err := WriteFileAtomic(streamer.SENSOR_INFO_TEXT_FILE, []byte("[ 老君山野蓝莓谷 ]"+" \t GPS: "+sensorInfo.gps+" \t 当地时间： %{localtime} \t 运行时长："+duration.String()+"\n"+strings.Join(strInfo[:], "")), 0644); err != nil {
