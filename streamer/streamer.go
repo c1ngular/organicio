@@ -44,9 +44,9 @@ var (
 
 	FFMPEG_STREAM_MAXBITRATE = "500k"
 	FFMPEG_STREAM_BUFFERSIZE = "1000k"
-	FFMPEG_STREAM_FRAMERATE  = "24"
+	FFMPEG_STREAM_FRAMERATE  = "20"
 	FFMPEG_STREAM_PRESET     = "veryfast" // ultrafast,superfast, veryfast, faster, fast, medium, slow, slower, veryslow, placebo
-	FFMPEG_VIDEO_GOP         = "48"       /*twice as frame rate , a key frame every 2 seconds*/
+	FFMPEG_VIDEO_GOP         = "40"       /*twice as frame rate , a key frame every 2 seconds*/
 
 	FFMPEG_STREAM_CRF_LOW    = "34"
 	FFMPEG_STREAM_CRF_MEDIUM = "28"
