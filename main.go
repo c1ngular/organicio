@@ -7,6 +7,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/organicio/mediaserver"
@@ -50,6 +51,7 @@ func loadConfig(configfilename string) {
 	localAuthKey := results.Get("local_auth_key").String()
 	localAuthPass := results.Get("local_auth_pass").String()
 	burnSensorInfo := results.Get("burnSensorInfo").Bool()
+	starttime := results.Get("statsDatetime").String()
 
 	if deviceuid == "" || businessuid == "" {
 		panic("\n emtpy device uid or business uid \n")
@@ -71,6 +73,10 @@ func loadConfig(configfilename string) {
 
 	sensor.LOCATION_NAME = locationName
 	sensor.GPS = gps
+
+	if startUnix, err := strconv.ParseInt(starttime, 10, 64); err == nil {
+		sensor.StartTime = time.Unix(startUnix, 0)
+	}
 
 	if _, err := os.Stat(watermarkUrl); err == nil {
 

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/organicio/streamer"
@@ -21,9 +22,8 @@ const (
 var (
 	LOCATION_NAME = ""
 	GPS           = ""
+	StartTime     = time.Now()
 )
-
-var startTime time.Time
 
 type Sensor struct {
 	sname  string
@@ -31,12 +31,18 @@ type Sensor struct {
 	sunit  string
 }
 
+type Sensors struct {
+	Sensors []*Sensor
+	Mux     sync.Mutex
+}
+
+var Isensors = Sensors{}
+
 type SensorServer struct {
 	server *http.Server
 }
 
 func NewSensorServer() *SensorServer {
-	startTime = time.Now()
 	return &SensorServer{}
 }
 
@@ -54,24 +60,26 @@ func (s *SensorServer) StartSensorServer() {
 }
 
 func (s *SensorServer) OnSensorUpdate(w http.ResponseWriter, req *http.Request) {
-
-	var Sensors []Sensor
 	rand.Seed(time.Now().UnixNano())
-	Sensors = append(Sensors, Sensor{sname: "温度", svalue: strconv.Itoa(rand.Intn(100)), sunit: "℃"})
-	Sensors = append(Sensors, Sensor{sname: "湿度", svalue: strconv.Itoa(rand.Intn(100)), sunit: "\\%"})
-	Sensors = append(Sensors, Sensor{sname: "风向", svalue: "西南", sunit: ""})
-	Sensors = append(Sensors, Sensor{sname: "风速", svalue: strconv.Itoa(rand.Intn(100)), sunit: "m/s"})
-	s.UpdateSensorInfoFile(Sensors)
+	Isensors.Mux.Lock()
+
+	Isensors.Sensors = append(Isensors.Sensors, &Sensor{sname: "湿度", svalue: strconv.Itoa(rand.Intn(100)), sunit: "\\%"})
+	Isensors.Sensors = append(Isensors.Sensors, &Sensor{sname: "温度", svalue: strconv.Itoa(rand.Intn(100)), sunit: "℃"})
+	Isensors.Sensors = append(Isensors.Sensors, &Sensor{sname: "风向", svalue: "西南", sunit: ""})
+	Isensors.Sensors = append(Isensors.Sensors, &Sensor{sname: "风速", svalue: strconv.Itoa(rand.Intn(100)), sunit: "m/s"})
+
+	Isensors.Mux.Unlock()
+	s.UpdateSensorInfoFile(Isensors.Sensors)
 }
 
 func (s *SensorServer) StopSensorServer() {
 	s.server.Close()
 }
 
-func (s *SensorServer) UpdateSensorInfoFile(sensorInfo []Sensor) {
+func (s *SensorServer) UpdateSensorInfoFile(sensorInfo []*Sensor) {
 
-	duration := Parse(time.Since(startTime)).LimitFirstN(2)
-	strInfo := "[" + LOCATION_NAME + "] \t " + "GPS：" + GPS + " \t" + "当地时间： %{localtime} \t " + "运行时长：" + duration.String() + "\n" + "实时数据/分钟： \t "
+	duration := Parse(time.Since(StartTime)).LimitFirstN(3)
+	strInfo := "[" + LOCATION_NAME + "] \t " + "GPS：" + GPS + " \t" + "当地时间： %{localtime} \t " + "运行时间：" + duration.String() + "\n" + "实时数据/分钟： \t "
 	for _, s := range sensorInfo {
 		strInfo += s.sname + "：" + s.svalue + s.sunit + " \t "
 	}
