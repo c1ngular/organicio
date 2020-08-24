@@ -35,6 +35,8 @@ func loadConfig(configfilename string) {
 	results := gjson.Parse(dstr)
 	deviceuid := results.Get("device_uid").String()
 	businessuid := results.Get("business_uid").String()
+	locationName := results.Get("location_name").String()
+	gps := results.Get("gps").String()
 	watermarkEnabled := results.Get("watermark_enabled").Bool()
 	watermarkUrl := results.Get("watermark_img_url").String()
 	watermarkPosition := results.Get("watermark_position").String()
@@ -62,6 +64,13 @@ func loadConfig(configfilename string) {
 
 	mediaserver.LOCAL_STREAM_AUTH_URL_KEY = localAuthKey
 	mediaserver.LOCAL_STREAM_AUTH_URL_PASSWORD = localAuthPass
+
+	if locationName == "" || gps == "" {
+		panic("\n emtpy location info \n")
+	}
+
+	sensor.LOCATION_NAME = locationName
+	sensor.GPS = gps
 
 	if _, err := os.Stat(watermarkUrl); err == nil {
 

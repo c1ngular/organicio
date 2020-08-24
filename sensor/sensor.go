@@ -9,7 +9,6 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/organicio/streamer"
@@ -19,14 +18,17 @@ const (
 	HTTP_PORT = "9911"
 )
 
+var (
+	LOCATION_NAME = ""
+	GPS           = ""
+)
+
 var startTime time.Time
 
 type Sensor struct {
-	temp     string
-	humidity string
-	wind     string
-	speed    string
-	gps      string
+	sname  string
+	svalue string
+	sunit  string
 }
 
 type SensorServer struct {
@@ -52,33 +54,29 @@ func (s *SensorServer) StartSensorServer() {
 }
 
 func (s *SensorServer) OnSensorUpdate(w http.ResponseWriter, req *http.Request) {
+
+	var Sensors []Sensor
 	rand.Seed(time.Now().UnixNano())
-	sensorInfo := &Sensor{
-		temp:     strconv.Itoa(rand.Intn(100)),
-		humidity: strconv.Itoa(rand.Intn(100)),
-		wind:     "西南",
-		speed:    strconv.Itoa(rand.Intn(100)),
-		gps:      "100.2356,26.8740",
-	}
-	s.UpdateSensorInfoFile(sensorInfo)
+	Sensors = append(Sensors, Sensor{sname: "温度", svalue: strconv.Itoa(rand.Intn(100)), sunit: "℃"})
+	Sensors = append(Sensors, Sensor{sname: "湿度", svalue: strconv.Itoa(rand.Intn(100)), sunit: "\\%"})
+	Sensors = append(Sensors, Sensor{sname: "风向", svalue: "西南", sunit: ""})
+	Sensors = append(Sensors, Sensor{sname: "风速", svalue: strconv.Itoa(rand.Intn(100)), sunit: "m/s"})
+	s.UpdateSensorInfoFile(Sensors)
 }
 
 func (s *SensorServer) StopSensorServer() {
 	s.server.Close()
 }
 
-func (s *SensorServer) UpdateSensorInfoFile(sensorInfo *Sensor) {
+func (s *SensorServer) UpdateSensorInfoFile(sensorInfo []Sensor) {
 
 	duration := Parse(time.Since(startTime)).LimitFirstN(2)
-
-	strInfo := []string{
-		"温度：" + sensorInfo.temp + "℃" + " \t ",
-		"湿度：" + sensorInfo.humidity + "\\%" + " \t ",
-		"风向：" + sensorInfo.wind + " \t ",
-		"风速：" + sensorInfo.speed + "m/s" + " \t ",
+	strInfo := "[" + LOCATION_NAME + "] \t " + "GPS：" + GPS + " \t" + "当地时间： %{localtime} \t " + "运行时长：" + duration.String() + "\n" + "实时数据/分钟： \t "
+	for _, s := range sensorInfo {
+		strInfo += s.sname + "：" + s.svalue + s.sunit + " \t "
 	}
 
-	if err := WriteFileAtomic(streamer.SENSOR_INFO_TEXT_FILE, []byte("[ 老君山野蓝莓谷 ]"+" \t GPS: "+sensorInfo.gps+" \t 当地时间： %{localtime} \t 运行时长："+duration.String()+"\n"+"环境监测/小时： \t "+strings.Join(strInfo[:], " ")), 0644); err != nil {
+	if err := WriteFileAtomic(streamer.SENSOR_INFO_TEXT_FILE, []byte(strInfo), 0644); err != nil {
 		fmt.Printf("updating sensor info error : %s", err)
 	}
 }
