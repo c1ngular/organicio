@@ -61,12 +61,40 @@ func (s *SensorServer) StartSensorServer() {
 
 func (s *SensorServer) OnSensorUpdate(w http.ResponseWriter, req *http.Request) {
 	rand.Seed(time.Now().UnixNano())
+
+	upcomingSensors := []*Sensor{
+		{sname: "湿度", svalue: strconv.Itoa(rand.Intn(100)), sunit: "\\%"},
+		{sname: "温度", svalue: strconv.Itoa(rand.Intn(100)), sunit: "℃"},
+		{sname: "风向", svalue: "西南", sunit: ""},
+		{sname: "风速", svalue: strconv.Itoa(rand.Intn(100)), sunit: "m/s"},
+	}
+
 	Isensors.Mux.Lock()
 
-	Isensors.Sensors = append(Isensors.Sensors, &Sensor{sname: "湿度", svalue: strconv.Itoa(rand.Intn(100)), sunit: "\\%"})
-	Isensors.Sensors = append(Isensors.Sensors, &Sensor{sname: "温度", svalue: strconv.Itoa(rand.Intn(100)), sunit: "℃"})
-	Isensors.Sensors = append(Isensors.Sensors, &Sensor{sname: "风向", svalue: "西南", sunit: ""})
-	Isensors.Sensors = append(Isensors.Sensors, &Sensor{sname: "风速", svalue: strconv.Itoa(rand.Intn(100)), sunit: "m/s"})
+	slen := len(Isensors.Sensors)
+
+	if slen > 0 {
+
+		for j := range upcomingSensors {
+
+			notExisted := true
+
+			for i := 0; i < slen; i++ {
+				if upcomingSensors[j].sname == Isensors.Sensors[i].sname {
+					Isensors.Sensors[i].svalue = upcomingSensors[j].svalue
+					notExisted = false
+				}
+			}
+
+			if notExisted {
+				Isensors.Sensors = append(Isensors.Sensors, upcomingSensors[j])
+			}
+
+		}
+
+	} else {
+		Isensors.Sensors = append(Isensors.Sensors, upcomingSensors...)
+	}
 
 	Isensors.Mux.Unlock()
 	s.UpdateSensorInfoFile(Isensors.Sensors)
