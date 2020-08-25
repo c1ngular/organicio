@@ -52,6 +52,8 @@ func loadConfig(configfilename string) {
 	localAuthPass := results.Get("local_auth_pass").String()
 	burnSensorInfo := results.Get("burnSensorInfo").Bool()
 	starttime := results.Get("statsDatetime").String()
+	sensortxtfile := results.Get("sensor_txt_file").String()
+	sensortxtfont := results.Get("sensor_txt_fontfile").String()
 
 	if deviceuid == "" || businessuid == "" {
 		panic("\n emtpy device uid or business uid \n")
@@ -77,6 +79,13 @@ func loadConfig(configfilename string) {
 	if startUnix, err := strconv.ParseInt(starttime, 10, 64); err == nil {
 		sensor.StartTime = time.Unix(startUnix, 0)
 	}
+
+	if sensortxtfile == "" || sensortxtfont == "" {
+		panic("\n sensor info text file or font not assigned \n")
+	}
+
+	streamer.SENSOR_INFO_TEXT_FILE = sensortxtfile
+	streamer.SENSOR_INFO_FONT_FILE = sensortxtfont
 
 	if _, err := os.Stat(watermarkUrl); err == nil {
 

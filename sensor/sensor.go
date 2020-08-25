@@ -47,6 +47,9 @@ func NewSensorServer() *SensorServer {
 }
 
 func (s *SensorServer) StartSensorServer() {
+	if streamer.BURN_SENSOR_INFO_TO_VIDEO {
+		s.UpdateSensorInfoFile(Isensors.Sensors)
+	}
 
 	go func() {
 		s.server = &http.Server{
@@ -60,6 +63,7 @@ func (s *SensorServer) StartSensorServer() {
 }
 
 func (s *SensorServer) OnSensorUpdate(w http.ResponseWriter, req *http.Request) {
+
 	rand.Seed(time.Now().UnixNano())
 
 	upcomingSensors := []*Sensor{
@@ -97,7 +101,11 @@ func (s *SensorServer) OnSensorUpdate(w http.ResponseWriter, req *http.Request) 
 	}
 
 	Isensors.Mux.Unlock()
-	s.UpdateSensorInfoFile(Isensors.Sensors)
+
+	if streamer.BURN_SENSOR_INFO_TO_VIDEO {
+		s.UpdateSensorInfoFile(Isensors.Sensors)
+	}
+
 }
 
 func (s *SensorServer) StopSensorServer() {

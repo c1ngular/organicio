@@ -28,8 +28,8 @@ var (
 	WATERMARK_POSITION_TOP_RIGHT    = "overlay=main_w-overlay_w-10:10"
 	WATERMARK_POSITION_TOP_LEFT     = "overlay=10:10"
 	WATERMARK_POSITION              = WATERMARK_POSITION_BOTTOM_RIGHT
-	SENSOR_INFO_TEXT_FILE           = "/Users/s1ngular/GoWork/src/github.com/organicio/sensor.txt"
-	SENSOR_INFO_FONT_FILE           = "/Users/s1ngular/GoWork/src/github.com/organicio/streamer/NotoSansSC-Regular.otf"
+	SENSOR_INFO_TEXT_FILE           = ""
+	SENSOR_INFO_FONT_FILE           = ""
 	BURN_SENSOR_INFO_TO_VIDEO       = false
 
 	MP3S_FOLDER_PATH    = ""
