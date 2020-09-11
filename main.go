@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
-	"net/http"
+	_ "log"
+	_ "net/http"
 	_ "net/http/pprof"
 	"os"
 	"strconv"
@@ -14,6 +14,12 @@ import (
 	"github.com/organicio/sensor"
 	"github.com/organicio/streamer"
 	"github.com/tidwall/gjson"
+
+	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/quick"
+
+	"github.com/organicio/mpv"
 )
 
 var DEVICE_UID = ""
@@ -139,11 +145,22 @@ func loadConfig(configfilename string) {
 
 func main() {
 
-	go func() {
+	/*go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
-	//runtime.SetBlockProfileRate(1)
-	///runtime.SetMutexProfileFraction(5)
+	runtime.SetBlockProfileRate(1)
+	runtime.SetMutexProfileFraction(5)*/
+
+	gui.NewQGuiApplication(len(os.Args), os.Args)
+
+	mpv.InitMpv()
+
+	view := quick.NewQQuickView(nil)
+	view.SetResizeMode(quick.QQuickView__SizeRootObjectToView)
+	view.SetSource(core.NewQUrl3("qrc:/qml/main.qml", 0))
+	view.ShowFullScreen()
+
+	gui.QGuiApplication_Exec()
 
 	loadConfig("./config.cfg")
 	mstreamer.MergeMp3s()

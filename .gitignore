@@ -24,3 +24,6 @@ ffmpeg
 main
 # Dependency directories (remove the comment below to include it)
 # vendor/
+rcc*
+deploy
+mpv
