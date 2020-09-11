@@ -181,10 +181,12 @@ Item {
 
     function showLoadingIndicator(){
         loadingIndicator.running=true
+        loadingPopUp.open()
     }
 
     function hideLoadingIndicator(){
         loadingIndicator.running=false
+        loadingPopUp.close()
     }    
 
     ListModel {
@@ -1165,6 +1167,41 @@ Item {
                                 }
                             }
 
+                            Component{
+                                id:addStreamView
+                                Rectangle{
+                                    height:previewVideoHeight + previewVideoPadding * 2
+                                    width:previewVideoHeight * previewVideoRatio + previewVideoPadding * 6
+                                    color: "transparent"      
+                                    Rectangle {
+                                        height:parent.height
+                                        width:parent.width - previewVideoPadding * 4
+                                        anchors.right:parent.right
+                                        color: videoInactiveBgColor
+                                        radius:universalBorderRadius
+                                        border{
+                                            color: videoInactiveBorderColor
+                                            width: previewVideoBorderWidth
+                                        }   
+                                        Text{
+                                            anchors.centerIn:parent
+                                            color: videoInactiveBorderColor
+                                            text: "+"
+                                            clip:true
+                                            font{
+                                                pointSize: parent.height * sensorTextParentHeightPercent
+                                            }
+                                        }
+                                    }    
+                                    MouseArea{
+                                        anchors.fill: parent
+                                        onClicked:{
+                                            newStreamPopUp.open()
+                                        }
+                                    }                                                                    
+                                }                           
+                            }
+
                             ListView {
                                 id:videoList
                                 anchors.fill: parent
@@ -1177,6 +1214,7 @@ Item {
                                 focus: true
                                 highlightFollowsCurrentItem:true
                                 highlightMoveDuration: 200
+                                footer:addStreamView 
                                 Component.onCompleted: {
                                     mainvideo.command(["loadfile", streamModel.get(videoList.currentIndex).url])    
                                     setMainVideoPlayerVolume(defaultMainVideoVolume)  
@@ -1196,12 +1234,57 @@ Item {
 
         }
 
-        BusyIndicator {
-            id:loadingIndicator
-            width: loadingIndicatorSize
-            height: loadingIndicatorSize
-            anchors.centerIn:parent
-            running:true
+        Popup {
+            Material.theme: Material.Light
+            Material.elevation: 6
+            id: newStreamPopUp
+            modal: true
+            focus: true
+            closePolicy:Popup.CloseOnPressOutside
+            dim:true
+            x: Screen.width / 3
+            y: Screen.height / 3
+            width: Screen.width / 3 
+            height:Screen.height / 6
+            Row{
+                id:newStreamPopContent
+                spacing: 20
+                anchors.fill:parent
+                TextField {
+                    id: streamAddField
+                    placeholderText: "拉流地址"
+                    width:(parent.width - 20) * 0.7
+                    anchors.verticalCenter:parent.verticalCenter
+                }
+                Button {
+                    id: button
+                    text: "确认"
+                    width: (parent.width - 20) * 0.3
+                    highlighted: true
+                    anchors.verticalCenter:parent.verticalCenter
+                }
+            }
         }
+
+        Popup {
+            Material.theme: Material.Light
+            Material.elevation: 6
+            id: loadingPopUp
+            modal: true
+            focus: false
+            closePolicy:Popup.NoAutoClose
+            dim:true
+            x: (Screen.width - loadingIndicatorSize * 2) / 2
+            y: (Screen.height - loadingIndicatorSize * 2) / 2
+            width: loadingIndicatorSize * 2 
+            height:loadingIndicatorSize * 2
+            BusyIndicator {
+                id:loadingIndicator
+                width: loadingIndicatorSize
+                height: loadingIndicatorSize
+                anchors.centerIn:parent
+                running:true
+            }
+        }        
     }
 }
