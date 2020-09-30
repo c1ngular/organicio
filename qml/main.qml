@@ -21,7 +21,7 @@ Item {
     property var msgConPadding:10
     property var messageBoxHeight:(Screen.height * 0.24) 
     property var controlBoxMessageBoxGap:20
-    property var sysStatusBarHeightRatio: (1/8)
+    property var sysStatusBarHeightRatio: (1/7)
     property var sensorConPadding: 20
     property var controlConPadding:20
     property var sensorNumEachRow:5
@@ -40,7 +40,7 @@ Item {
     property var sensorIconParentHeightPercent:0.7
     property var sensorTextParentHeightPercent:0.5
 
-    property var sysInfoIconParentWidthPercent:0.3
+    property var sysInfoIconParentWidthPercent:0.6
     property var sysInfoTextParentWidthPercent:0.2
     property var sysInfoTextColor:Material.color(Material.Orange)
     property var sysInfoTextLetterSpace:1
@@ -772,7 +772,7 @@ Item {
                                                             height:parent.height / 2
                                                             color:"transparent"
                                                             Image{
-                                                                height: parent.width * sysInfoIconParentWidthPercent 
+                                                                height: parent.height * sysInfoIconParentWidthPercent 
                                                                 anchors.centerIn:parent
                                                                 source:iicon
                                                                 fillMode: Image.PreserveAspectFit
@@ -1023,7 +1023,7 @@ Item {
                                 Rectangle{
                                     width:parent.width
                                     height:messageBoxHeight - controlBoxMessageBoxGap
-                                    color:"transparent"
+                                    color:controlConBgColor
                                     radius:universalBorderRadius
                                     border{
                                         color:controlConBorderColor
