@@ -18,6 +18,9 @@ Item {
     property var previewVideoRatio: (16 / 9)
     property var streamingIndicatorRadius: 10
     property var infoConWidth: (Screen.width * 0.28)
+    property var msgConPadding:10
+    property var messageBoxHeight:(Screen.height * 0.24) 
+    property var controlBoxMessageBoxGap:20
     property var sysStatusBarHeightRatio: (1/8)
     property var sensorConPadding: 20
     property var controlConPadding:20
@@ -37,7 +40,7 @@ Item {
     property var sensorIconParentHeightPercent:0.7
     property var sensorTextParentHeightPercent:0.5
 
-    property var sysInfoIconParentWidthPercent:0.4
+    property var sysInfoIconParentWidthPercent:0.3
     property var sysInfoTextParentWidthPercent:0.2
     property var sysInfoTextColor:Material.color(Material.Orange)
     property var sysInfoTextLetterSpace:1
@@ -724,298 +727,334 @@ Item {
                                 showControls()
                             }
 
-                            Rectangle{
+                            Column{
+                                spacing:controlBoxMessageBoxGap
                                 width:parent.width - controlConPadding * 2
                                 height:parent.height - controlConPadding * 2
                                 anchors.centerIn:parent
-                                color:controlConBgColor   
-                                radius:universalBorderRadius
-                                border{
-                                    color:controlConBorderColor
-                                    width:controlConBorderWidth
-                                }
-                                Column{
-                                    spacing:0
-                                    anchors.fill:parent
-                                    Rectangle{
-                                        width:parent.width
-                                        height: parent.height * sysStatusBarHeightRatio
-                                        color:"transparent"
-                                        GridView {
-                                            clip:true
-                                            id:systemWatch
-                                            anchors.fill:parent
-                                            cellWidth: parent.width / systemInfoModel.count
-                                            cellHeight:parent.height
-                                            model: systemInfoModel
-                                            delegate: systemInfoDelegate
-                                            focus:false
-                                        }   
-                                        Component{
-                                            id:systemInfoDelegate
-                                            Rectangle{
-                                                width:systemWatch.cellWidth
-                                                height:systemWatch.cellHeight
-                                                color:"transparent"
-                                                Column{
-                                                    spacing:0
-                                                    anchors.fill:parent
-                                                    Rectangle{
-                                                        width:parent.width
-                                                        height:parent.height / 2
-                                                        color:"transparent"
-                                                        Image{
-                                                            height: parent.width * sysInfoIconParentWidthPercent 
-                                                            anchors.centerIn:parent
-                                                            source:iicon
-                                                            fillMode: Image.PreserveAspectFit
-                                                        }
-                                                    }
-                                                    Rectangle{
-                                                        width:parent.width
-                                                        height:parent.height / 2
-                                                        color:"transparent"
-                                                        Text{
-                                                            anchors.centerIn:parent
-                                                            color: sysInfoTextColor
-                                                            text: ivlu+iunit
-                                                            clip:true
-                                                            font{
-                                                                letterSpacing:sysInfoTextLetterSpace
-                                                                wordSpacing:sysInfoTextWordSpace
-                                                                pointSize: parent.width * sysInfoTextParentWidthPercent
+                                Rectangle{
+                                    width:parent.width
+                                    height:parent.height - messageBoxHeight
+                                    color:controlConBgColor   
+                                    radius:universalBorderRadius
+                                    border{
+                                        color:controlConBorderColor
+                                        width:controlConBorderWidth
+                                    }
+                                    Column{
+                                        spacing:0
+                                        anchors.fill:parent
+                                        Rectangle{
+                                            width:parent.width
+                                            height: parent.height * sysStatusBarHeightRatio
+                                            color:"transparent"
+                                            GridView {
+                                                clip:true
+                                                id:systemWatch
+                                                anchors.fill:parent
+                                                cellWidth: parent.width / systemInfoModel.count
+                                                cellHeight:parent.height
+                                                model: systemInfoModel
+                                                delegate: systemInfoDelegate
+                                                focus:false
+                                            }   
+                                            Component{
+                                                id:systemInfoDelegate
+                                                Rectangle{
+                                                    width:systemWatch.cellWidth
+                                                    height:systemWatch.cellHeight
+                                                    color:"transparent"
+                                                    Column{
+                                                        spacing:0
+                                                        anchors.fill:parent
+                                                        Rectangle{
+                                                            width:parent.width
+                                                            height:parent.height / 2
+                                                            color:"transparent"
+                                                            Image{
+                                                                height: parent.width * sysInfoIconParentWidthPercent 
+                                                                anchors.centerIn:parent
+                                                                source:iicon
+                                                                fillMode: Image.PreserveAspectFit
                                                             }
-                                                        }                                                        
+                                                        }
+                                                        Rectangle{
+                                                            width:parent.width
+                                                            height:parent.height / 2
+                                                            color:"transparent"
+                                                            Text{
+                                                                anchors.centerIn:parent
+                                                                color: sysInfoTextColor
+                                                                text: ivlu+iunit
+                                                                clip:true
+                                                                font{
+                                                                    letterSpacing:sysInfoTextLetterSpace
+                                                                    wordSpacing:sysInfoTextWordSpace
+                                                                    pointSize: parent.width * sysInfoTextParentWidthPercent
+                                                                }
+                                                            }                                                        
+                                                        }
                                                     }
                                                 }
-                                            }
-                                        }                                                                            
-                                    }
-                                    Rectangle{
-                                        width:parent.width
-                                        height:sysInfoControlSegHeight
-                                        color:controlConBorderColor
-                                    }
-                                    Rectangle{
-                                        id:controlsBox
-                                        width:parent.width
-                                        height:parent.height * (1 - sysStatusBarHeightRatio) - sysInfoControlSegHeight
-                                        color:"transparent"
-                                        ScrollView {
-                                            id:controlScroller
-                                            width:parent.width - controlScrollPadding * 2
-                                            height:parent.height - controlScrollPadding * 2 
-                                            anchors.centerIn: parent
-                                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                                            ScrollBar.vertical.policy: ScrollBar.AlwaysOn
-                                            clip:true
+                                            }                                                                            
+                                        }
+                                        Rectangle{
+                                            width:parent.width
+                                            height:sysInfoControlSegHeight
+                                            color:controlConBorderColor
+                                        }
+                                        Rectangle{
+                                            id:controlsBox
+                                            width:parent.width
+                                            height:parent.height * (1 - sysStatusBarHeightRatio) - sysInfoControlSegHeight
+                                            color:"transparent"
+                                            ScrollView {
+                                                id:controlScroller
+                                                width:parent.width - controlScrollPadding * 2
+                                                height:parent.height - controlScrollPadding * 2 
+                                                anchors.centerIn: parent
+                                                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                                                ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+                                                clip:true
 
-                                            Column{
-                                                spacing:controlEachItemMargin
-                                                width:parent.width
-                                                Rectangle{
+                                                Column{
+                                                    spacing:controlEachItemMargin
                                                     width:parent.width
-                                                    height:controlEachOptionHeightBase
-                                                    color:"transparent"
-                                                    GroupBox {
-                                                        title: "本地音量"
-                                                        anchors.fill:parent
-                                                        label: Label {
-                                                            width: parent.width
-                                                            text: parent.title
-                                                            color: controlItemSectionTitleColor
-                                                            elide: Text.ElideRight
-                                                        }
-                                                        Slider {
-                                                            id: volumeSetter
-                                                            value: defaultMainVideoVolume
-                                                            from:0
-                                                            to:100
-                                                            width: parent.width
-                                                            anchors.centerIn:parent
-                                                            onMoved:{
-                                                                setMainVideoPlayerVolume(volumeSetter.value)
-                                                            }
-                                                        }                                               
-                                                    }                                                         
-                                                }   
-                                                Rectangle{
-                                                    width:parent.width
-                                                    height:controlEachOptionHeightBase * 2
-                                                    color:"transparent"
-                                                    GroupBox {
-                                                        title: "背景音乐"
-                                                        anchors.fill:parent
-                                                        label: Label {
-                                                            width: parent.width
-                                                            text: parent.title
-                                                            color: controlItemSectionTitleColor
-                                                            elide: Text.ElideRight
-                                                        }
-                                                        Column{
-                                                            spacing:controlEachItemMargin
-                                                            width:parent.width
-                                                            Switch {
-                                                                text: "背景音乐开关"
+                                                    Rectangle{
+                                                        width:parent.width
+                                                        height:controlEachOptionHeightBase
+                                                        color:"transparent"
+                                                        GroupBox {
+                                                            title: "本地音量"
+                                                            anchors.fill:parent
+                                                            label: Label {
+                                                                width: parent.width
+                                                                text: parent.title
+                                                                color: controlItemSectionTitleColor
+                                                                elide: Text.ElideRight
                                                             }
                                                             Slider {
-                                                                id: bgMusicVolume
-                                                                value: 0.5
+                                                                id: volumeSetter
+                                                                value: defaultMainVideoVolume
+                                                                from:0
+                                                                to:100
                                                                 width: parent.width
-                                                            }                                                               
-                                                        }                                             
-                                                    }                                                         
-                                                }         
-
-                                                Rectangle{
-                                                    width:parent.width
-                                                    height:controlEachOptionHeightBase * 2
-                                                    color:"transparent"
-                                                    GroupBox {
-                                                        title: "水印图片"
-                                                        anchors.fill:parent
-                                                        label: Label {
-                                                            width: parent.width
-                                                            text: parent.title
-                                                            color: controlItemSectionTitleColor
-                                                            elide: Text.ElideRight
-                                                        }
-                                                        Column{
-                                                            spacing:controlEachItemMargin
-                                                            width:parent.width
-                                                            Switch {
-                                                                text: "水印图片开关"
-                                                            }
-                                                            ComboBox {
-                                                                model: ["左上角", "左下角", "右上角","右下角"]
+                                                                anchors.centerIn:parent
+                                                                onMoved:{
+                                                                    setMainVideoPlayerVolume(volumeSetter.value)
+                                                                }
+                                                            }                                               
+                                                        }                                                         
+                                                    }   
+                                                    Rectangle{
+                                                        width:parent.width
+                                                        height:controlEachOptionHeightBase * 2
+                                                        color:"transparent"
+                                                        GroupBox {
+                                                            title: "背景音乐"
+                                                            anchors.fill:parent
+                                                            label: Label {
                                                                 width: parent.width
-                                                            }                                                            
-                                                        }                                             
-                                                    }                                                         
-                                                }         
+                                                                text: parent.title
+                                                                color: controlItemSectionTitleColor
+                                                                elide: Text.ElideRight
+                                                            }
+                                                            Column{
+                                                                spacing:controlEachItemMargin
+                                                                width:parent.width
+                                                                Switch {
+                                                                    text: "背景音乐开关"
+                                                                }
+                                                                Slider {
+                                                                    id: bgMusicVolume
+                                                                    value: 0.5
+                                                                    width: parent.width
+                                                                }                                                               
+                                                            }                                             
+                                                        }                                                         
+                                                    }         
 
-                                                Rectangle{
-                                                    width:parent.width
-                                                    height:controlEachOptionHeightBase * 3
-                                                    color:"transparent"
-                                                    GroupBox {
-                                                        title: "视频推送尺寸"
-                                                        anchors.fill:parent
-                                                        label: Label {
-                                                            width: parent.width
-                                                            text: parent.title
-                                                            color: controlItemSectionTitleColor
-                                                            elide: Text.ElideRight
-                                                        }
-                                                        Column{
-                                                            spacing:controlEachItemMargin
-                                                            width:parent.width
-                                                            RadioButton {
-                                                                text: "720p"
-                                                            }
-                                                            RadioButton {
-                                                                text: "480p"
-                                                            }
-                                                            RadioButton {
-                                                                text: "320p"
-                                                            }                                                          
-                                                        }                                             
-                                                    }                                                         
-                                                }   
-
-                                                Rectangle{
-                                                    width:parent.width
-                                                    height:controlEachOptionHeightBase * 3
-                                                    color:"transparent"
-                                                    GroupBox {
-                                                        title: "视频推送质量"
-                                                        anchors.fill:parent
-                                                        label: Label {
-                                                            width: parent.width
-                                                            text: parent.title
-                                                            color: controlItemSectionTitleColor
-                                                            elide: Text.ElideRight
-                                                        }
-                                                        Column{
-                                                            spacing:controlEachItemMargin
-                                                            width:parent.width
-                                                            RadioButton {
-                                                                text: "高清"
-                                                            }
-                                                            RadioButton {
-                                                                text: "标准"
-                                                            }
-                                                            RadioButton {
-                                                                text: "低清"
-                                                            }                                                          
-                                                        }                                             
-                                                    }                                                         
-                                                }       
-
-                                                Rectangle{
-                                                    width:parent.width
-                                                    height:controlEachOptionHeightBase * 1.2
-                                                    color:"transparent"
-                                                    GroupBox {
-                                                        title: "视频推送码率(KB)"
-                                                        anchors.fill:parent
-                                                        label: Label {
-                                                            width: parent.width
-                                                            text: parent.title
-                                                            color: controlItemSectionTitleColor
-                                                            elide: Text.ElideRight
-                                                        }
-                                                        Column{
-                                                            spacing:controlEachItemMargin
-                                                            width:parent.width
-                                                            SpinBox {
-                                                                id: box
-                                                                from:200
-                                                                to:5000
-                                                                stepSize:100
-                                                                value: 1000
+                                                    Rectangle{
+                                                        width:parent.width
+                                                        height:controlEachOptionHeightBase * 2
+                                                        color:"transparent"
+                                                        GroupBox {
+                                                            title: "水印图片"
+                                                            anchors.fill:parent
+                                                            label: Label {
                                                                 width: parent.width
-                                                                anchors.horizontalCenter: parent.horizontalCenter
-                                                                editable: false
-                                                            }                                                        
-                                                        }                                             
-                                                    }                                                         
-                                                }       
+                                                                text: parent.title
+                                                                color: controlItemSectionTitleColor
+                                                                elide: Text.ElideRight
+                                                            }
+                                                            Column{
+                                                                spacing:controlEachItemMargin
+                                                                width:parent.width
+                                                                Switch {
+                                                                    text: "水印图片开关"
+                                                                }
+                                                                ComboBox {
+                                                                    model: ["左上角", "左下角", "右上角","右下角"]
+                                                                    width: parent.width
+                                                                }                                                            
+                                                            }                                             
+                                                        }                                                         
+                                                    }         
 
-                                                Rectangle{
-                                                    width:parent.width
-                                                    height:controlEachOptionHeightBase * 2
-                                                    color:"transparent"
-                                                    GroupBox {
-                                                        title: "传感器"
-                                                        anchors.fill:parent
-                                                        label: Label {
-                                                            width: parent.width
-                                                            text: parent.title
-                                                            color:controlItemSectionTitleColor
-                                                            elide: Text.ElideRight
-                                                        }
-                                                        Column{
-                                                            spacing:controlEachItemMargin
-                                                            width:parent.width
-                                                            Switch {
-                                                                text: "写入输出画面"
-                                                            }      
-                                                            ComboBox {
-                                                                model: ["顶部", "中间", "底部"]
+                                                    Rectangle{
+                                                        width:parent.width
+                                                        height:controlEachOptionHeightBase * 3
+                                                        color:"transparent"
+                                                        GroupBox {
+                                                            title: "视频推送尺寸"
+                                                            anchors.fill:parent
+                                                            label: Label {
                                                                 width: parent.width
-                                                            }                                                                                                              
-                                                        }                                             
-                                                    }                                                         
-                                                }                                                                                                                                                                                                                                                                                                                                                                                                                                              
-                                            }                          
+                                                                text: parent.title
+                                                                color: controlItemSectionTitleColor
+                                                                elide: Text.ElideRight
+                                                            }
+                                                            Column{
+                                                                spacing:controlEachItemMargin
+                                                                width:parent.width
+                                                                RadioButton {
+                                                                    text: "720p"
+                                                                }
+                                                                RadioButton {
+                                                                    text: "480p"
+                                                                }
+                                                                RadioButton {
+                                                                    text: "320p"
+                                                                }                                                          
+                                                            }                                             
+                                                        }                                                         
+                                                    }   
+
+                                                    Rectangle{
+                                                        width:parent.width
+                                                        height:controlEachOptionHeightBase * 3
+                                                        color:"transparent"
+                                                        GroupBox {
+                                                            title: "视频推送质量"
+                                                            anchors.fill:parent
+                                                            label: Label {
+                                                                width: parent.width
+                                                                text: parent.title
+                                                                color: controlItemSectionTitleColor
+                                                                elide: Text.ElideRight
+                                                            }
+                                                            Column{
+                                                                spacing:controlEachItemMargin
+                                                                width:parent.width
+                                                                RadioButton {
+                                                                    text: "高清"
+                                                                }
+                                                                RadioButton {
+                                                                    text: "标准"
+                                                                }
+                                                                RadioButton {
+                                                                    text: "低清"
+                                                                }                                                          
+                                                            }                                             
+                                                        }                                                         
+                                                    }       
+
+                                                    Rectangle{
+                                                        width:parent.width
+                                                        height:controlEachOptionHeightBase * 1.2
+                                                        color:"transparent"
+                                                        GroupBox {
+                                                            title: "视频推送码率(KB)"
+                                                            anchors.fill:parent
+                                                            label: Label {
+                                                                width: parent.width
+                                                                text: parent.title
+                                                                color: controlItemSectionTitleColor
+                                                                elide: Text.ElideRight
+                                                            }
+                                                            Column{
+                                                                spacing:controlEachItemMargin
+                                                                width:parent.width
+                                                                SpinBox {
+                                                                    id: box
+                                                                    from:200
+                                                                    to:5000
+                                                                    stepSize:100
+                                                                    value: 1000
+                                                                    width: parent.width
+                                                                    anchors.horizontalCenter: parent.horizontalCenter
+                                                                    editable: false
+                                                                }                                                        
+                                                            }                                             
+                                                        }                                                         
+                                                    }       
+
+                                                    Rectangle{
+                                                        width:parent.width
+                                                        height:controlEachOptionHeightBase * 2
+                                                        color:"transparent"
+                                                        GroupBox {
+                                                            title: "传感器"
+                                                            anchors.fill:parent
+                                                            label: Label {
+                                                                width: parent.width
+                                                                text: parent.title
+                                                                color:controlItemSectionTitleColor
+                                                                elide: Text.ElideRight
+                                                            }
+                                                            Column{
+                                                                spacing:controlEachItemMargin
+                                                                width:parent.width
+                                                                Switch {
+                                                                    text: "写入输出画面"
+                                                                }      
+                                                                ComboBox {
+                                                                    model: ["顶部", "中间", "底部"]
+                                                                    width: parent.width
+                                                                }                                                                                                              
+                                                            }                                             
+                                                        }                                                         
+                                                    }                                                                                                                                                                                                                                                                                                                                                                                                                                              
+                                                }                          
+                                            }
+                                        }
+                                    }     
+                                }
+                                Rectangle{
+                                    width:parent.width
+                                    height:messageBoxHeight - controlBoxMessageBoxGap
+                                    color:"transparent"
+                                    radius:universalBorderRadius
+                                    border{
+                                        color:controlConBorderColor
+                                        width:controlConBorderWidth
+                                    }
+                                    
+                                    Column{
+                                        spacing:msgConPadding
+                                        padding:msgConPadding
+                                        width:parent.width - msgConPadding * 2
+                                        height:parent.height - msgConPadding * 2
+                                        TextArea {
+                                            width: parent.width
+                                            height:(parent.height - msgConPadding) * 0.7
+                                            wrapMode: TextArea.Wrap
+                                            placeholderText: "输入心晴日志..."
+                                            placeholderTextColor :"#ccc"
+                                        }
+                                        Button {
+                                            id: msgbutton
+                                            text: "发送"
+                                            width:parent.width * 0.5
+                                            height: (parent.height - msgConPadding) * 0.3
+                                            highlighted: true
                                         }
                                     }
-                                }     
+                                }
                             }
                             
                         }                        
-                    }                    
+                    }                
                 }
             }
 
