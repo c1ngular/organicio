@@ -848,10 +848,67 @@ Item {
                                                     }   
                                                     Rectangle{
                                                         width:parent.width
+                                                        height:controlEachOptionHeightBase
+                                                        color:"transparent"
+                                                        GroupBox {
+                                                            title: "推流开关"
+                                                            anchors.fill:parent
+                                                            label: Label {
+                                                                width: parent.width
+                                                                text: parent.title
+                                                                color: controlItemSectionTitleColor
+                                                                elide: Text.ElideRight
+                                                            }
+                                                            Switch {
+                                                                text: "开启/关闭推流"
+                                                            }                                             
+                                                        }                                                         
+                                                    }    
+                                                    Rectangle{
+                                                        width:parent.width
                                                         height:controlEachOptionHeightBase * 2
                                                         color:"transparent"
                                                         GroupBox {
-                                                            title: "背景音乐"
+                                                            title: "定时推流"
+                                                            anchors.fill:parent
+                                                            label: Label {
+                                                                width: parent.width
+                                                                text: parent.title
+                                                                color: controlItemSectionTitleColor
+                                                                elide: Text.ElideRight
+                                                            }   
+                                                            Column{
+                                                                spacing:controlEachItemMargin
+                                                                width:parent.width
+                                                                Switch {
+                                                                    text: "定时推流开关"
+                                                                }
+                                                                                                      
+                                                            }                                                                                           
+                                                        }                                                         
+                                                    }   
+                                                    Rectangle{
+                                                        width:parent.width
+                                                        height:controlEachOptionHeightBase
+                                                        color:"transparent"
+                                                        GroupBox {
+                                                            title: "定时录像"
+                                                            anchors.fill:parent
+                                                            label: Label {
+                                                                width: parent.width
+                                                                text: parent.title
+                                                                color: controlItemSectionTitleColor
+                                                                elide: Text.ElideRight
+                                                            }       
+                                                                                              
+                                                        }                                                         
+                                                    }                                                                                                              
+                                                    Rectangle{
+                                                        width:parent.width
+                                                        height:controlEachOptionHeightBase * 2
+                                                        color:"transparent"
+                                                        GroupBox {
+                                                            title: "推流背景音乐"
                                                             anchors.fill:parent
                                                             label: Label {
                                                                 width: parent.width
@@ -918,6 +975,7 @@ Item {
                                                                 spacing:controlEachItemMargin
                                                                 width:parent.width
                                                                 RadioButton {
+                                                                    checked: true
                                                                     text: "720p"
                                                                 }
                                                                 RadioButton {
@@ -948,6 +1006,7 @@ Item {
                                                                 width:parent.width
                                                                 RadioButton {
                                                                     text: "高清"
+                                                                    checked: true
                                                                 }
                                                                 RadioButton {
                                                                     text: "标准"
